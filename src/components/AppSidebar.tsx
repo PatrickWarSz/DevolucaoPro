@@ -31,13 +31,21 @@ export function AppSidebar() {
 
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-      {/* Wordmark VEXO oficial */}
-      <div className="flex h-14 items-center px-4 border-b border-sidebar-border">
-        <div className="min-w-0">
-          <div className="vexo-wordmark text-lg leading-none">
-            <span className="op">&gt;</span>VEXO<span className="op">&lt;</span>
-          </div>
-          <div className="vexo-tagline mt-1">software &amp; solutions</div>
+      {/* Brand — DevoluçõesPro by VEXO */}
+      <div className="flex items-center gap-3 px-3 py-3 border-b border-sidebar-border">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-sm mono text-[11px] font-medium">
+          <span className="text-primary">&gt;</span>
+          <span className="px-0.5">V</span>
+          <span className="text-primary">&lt;</span>
+        </div>
+        <div className="flex flex-col leading-tight min-w-0">
+          <span className="mono text-[11px] font-medium tracking-[0.18em] text-foreground">
+            <span className="text-primary">&gt;</span> V E X O <span className="text-primary">&lt;</span>
+          </span>
+          <span className="font-display text-[14px] font-semibold tracking-tight text-foreground truncate">
+            DevoluçõesPro
+          </span>
+          <span className="vexo-tagline">software &amp; solutions</span>
         </div>
       </div>
 
