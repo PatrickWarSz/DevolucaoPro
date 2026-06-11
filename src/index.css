@@ -3,150 +3,154 @@
 @tailwind utilities;
 
 /* ============================================================
-   DEVOLUÇÕES PRO — Design System
-   Enterprise / Utilitário Elegante
-   Todas cores em HSL. Sem neon. Foco em legibilidade.
+   VEXO | software & solutions — Design System
+   "Enterprise Clean" — luminoso, sóbrio, executivo.
+   Paleta âncora: #2563EB / #0F172A / #64748B / #F8FAFC / #E2E8F0
+   Tipografia: Space Grotesk (display) · Inter (UI) · JetBrains Mono (dados)
+   Grid base 8px · Radius 4px inputs / 8px módulos · Elevação 0 padrão
    ============================================================ */
 
 @layer base {
   :root {
-    /* Surfaces */
-    --background: 30 20% 98%;
-    --surface: 0 0% 100%;
-    --surface-muted: 30 12% 96%;
-    --surface-sunken: 30 14% 94%;
-    --foreground: 220 18% 14%;
+    /* Superfícies — base luminosa Enterprise Clean */
+    --background: 210 40% 98%;        /* #F8FAFC — fundo absoluto */
+    --surface: 0 0% 100%;             /* cards e módulos */
+    --surface-muted: 210 40% 96%;
+    --surface-sunken: 214 32% 94%;
+    --foreground: 222 47% 11%;        /* #0F172A — slate escuro, substitui preto puro */
 
     --card: 0 0% 100%;
-    --card-foreground: 220 18% 14%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 18% 14%;
+    --popover-foreground: 222 47% 11%;
 
-    /* Brand — verde sóbrio (não neon) */
-    --primary: 158 55% 32%;
+    /* Marca — Azul Confiança VEXO #2563EB */
+    --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
-    --primary-soft: 158 40% 94%;
+    --primary-soft: 221 90% 96%;
 
-    --secondary: 30 12% 94%;
-    --secondary-foreground: 220 18% 20%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 30 12% 95%;
-    --muted-foreground: 220 8% 46%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;  /* #64748B — slate médio */
 
-    --accent: 30 14% 93%;
-    --accent-foreground: 220 18% 14%;
+    --accent: 214 32% 94%;
+    --accent-foreground: 222 47% 11%;
 
-    /* Estados semânticos */
-    --success: 158 55% 32%;
+    /* Estados semânticos — saturação contida */
+    --success: 158 64% 38%;
     --success-foreground: 0 0% 100%;
-    --success-soft: 158 40% 94%;
-    --success-soft-foreground: 158 60% 22%;
+    --success-soft: 152 68% 96%;
+    --success-soft-foreground: 158 64% 22%;
 
-    --warning: 32 75% 42%;
+    --warning: 32 80% 46%;
     --warning-foreground: 0 0% 100%;
-    --warning-soft: 38 80% 94%;
-    --warning-soft-foreground: 28 70% 28%;
+    --warning-soft: 38 92% 95%;
+    --warning-soft-foreground: 28 75% 28%;
 
-    --destructive: 0 65% 48%;
+    --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
-    --destructive-soft: 0 70% 96%;
-    --destructive-soft-foreground: 0 65% 36%;
+    --destructive-soft: 0 86% 97%;
+    --destructive-soft-foreground: 0 70% 38%;
 
-    --info: 215 70% 48%;
-    --info-soft: 215 70% 95%;
-    --info-soft-foreground: 215 70% 32%;
+    --info: 221 83% 53%;
+    --info-soft: 221 90% 96%;
+    --info-soft-foreground: 221 83% 38%;
 
-    /* Borders / inputs */
-    --border: 30 10% 88%;
-    --border-strong: 30 10% 80%;
-    --input: 30 10% 88%;
-    --ring: 158 55% 32%;
+    /* Borders / inputs — VEXO Border #E2E8F0 */
+    --border: 214 32% 91%;
+    --border-strong: 215 25% 82%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
 
+    /* Radius — 4px micro / 8px módulos */
     --radius: 0.5rem;
 
-    /* Sidebar */
-    --sidebar-background: 30 16% 97%;
-    --sidebar-foreground: 220 14% 28%;
-    --sidebar-primary: 158 55% 32%;
+    /* Sidebar — leve elevação tonal, mesma família */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 30% 22%;
+    --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 14% 92%;
-    --sidebar-accent-foreground: 220 18% 14%;
-    --sidebar-border: 30 10% 88%;
-    --sidebar-ring: 158 55% 32%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 221 83% 53%;
 
-    /* Tipografia */
+    /* Tipografia VEXO */
+    --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
     --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-    /* Sombras refinadas (não dramáticas) */
-    --shadow-xs: 0 1px 2px 0 hsl(220 18% 14% / 0.04);
-    --shadow-sm: 0 1px 3px 0 hsl(220 18% 14% / 0.06), 0 1px 2px -1px hsl(220 18% 14% / 0.04);
-    --shadow-md: 0 4px 12px -2px hsl(220 18% 14% / 0.08), 0 2px 4px -2px hsl(220 18% 14% / 0.04);
-    --shadow-lg: 0 12px 32px -8px hsl(220 18% 14% / 0.12), 0 4px 8px -4px hsl(220 18% 14% / 0.06);
+    /* Elevação contida — sombras só pra dropdowns/modais/hover */
+    --shadow-xs: 0 1px 2px 0 hsl(222 47% 11% / 0.04);
+    --shadow-sm: 0 1px 3px 0 hsl(222 47% 11% / 0.06), 0 1px 2px -1px hsl(222 47% 11% / 0.04);
+    --shadow-md: 0 4px 12px -2px hsl(222 47% 11% / 0.08), 0 2px 4px -2px hsl(222 47% 11% / 0.04);
+    --shadow-lg: 0 12px 32px -8px hsl(222 47% 11% / 0.12), 0 4px 8px -4px hsl(222 47% 11% / 0.06);
 
-    /* Transições */
     --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 220 18% 9%;
-    --surface: 220 16% 12%;
-    --surface-muted: 220 14% 14%;
-    --surface-sunken: 220 18% 7%;
-    --foreground: 30 10% 92%;
+    /* Dark opcional, ainda alinhado ao slate VEXO */
+    --background: 222 47% 7%;
+    --surface: 222 40% 11%;
+    --surface-muted: 222 32% 14%;
+    --surface-sunken: 222 47% 5%;
+    --foreground: 210 40% 96%;
 
-    --card: 220 16% 12%;
-    --card-foreground: 30 10% 92%;
+    --card: 222 40% 11%;
+    --card-foreground: 210 40% 96%;
 
-    --popover: 220 16% 13%;
-    --popover-foreground: 30 10% 92%;
+    --popover: 222 40% 12%;
+    --popover-foreground: 210 40% 96%;
 
-    --primary: 158 50% 48%;
-    --primary-foreground: 220 18% 9%;
-    --primary-soft: 158 35% 18%;
+    --primary: 221 83% 60%;
+    --primary-foreground: 222 47% 7%;
+    --primary-soft: 221 60% 18%;
 
-    --secondary: 220 14% 16%;
-    --secondary-foreground: 30 10% 92%;
+    --secondary: 222 30% 16%;
+    --secondary-foreground: 210 40% 96%;
 
-    --muted: 220 14% 16%;
-    --muted-foreground: 220 8% 62%;
+    --muted: 222 30% 16%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 220 14% 18%;
-    --accent-foreground: 30 10% 92%;
+    --accent: 222 30% 18%;
+    --accent-foreground: 210 40% 96%;
 
-    --success: 158 50% 48%;
-    --success-foreground: 220 18% 9%;
-    --success-soft: 158 40% 16%;
-    --success-soft-foreground: 158 55% 70%;
+    --success: 158 60% 50%;
+    --success-foreground: 222 47% 7%;
+    --success-soft: 158 50% 16%;
+    --success-soft-foreground: 152 70% 72%;
 
-    --warning: 38 80% 56%;
-    --warning-foreground: 220 18% 9%;
-    --warning-soft: 32 50% 18%;
-    --warning-soft-foreground: 38 80% 70%;
+    --warning: 38 90% 60%;
+    --warning-foreground: 222 47% 7%;
+    --warning-soft: 32 60% 18%;
+    --warning-soft-foreground: 38 90% 72%;
 
-    --destructive: 0 65% 58%;
-    --destructive-foreground: 220 18% 9%;
-    --destructive-soft: 0 50% 20%;
-    --destructive-soft-foreground: 0 70% 78%;
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 222 47% 7%;
+    --destructive-soft: 0 50% 22%;
+    --destructive-soft-foreground: 0 80% 80%;
 
-    --info: 215 70% 60%;
-    --info-soft: 215 50% 20%;
-    --info-soft-foreground: 215 70% 76%;
+    --info: 221 83% 65%;
+    --info-soft: 221 50% 20%;
+    --info-soft-foreground: 221 80% 78%;
 
-    --border: 220 12% 22%;
-    --border-strong: 220 12% 28%;
-    --input: 220 12% 22%;
-    --ring: 158 50% 48%;
+    --border: 222 25% 22%;
+    --border-strong: 222 25% 30%;
+    --input: 222 25% 22%;
+    --ring: 221 83% 60%;
 
-    --sidebar-background: 220 18% 10%;
-    --sidebar-foreground: 30 8% 78%;
-    --sidebar-primary: 158 50% 48%;
-    --sidebar-primary-foreground: 220 18% 9%;
-    --sidebar-accent: 220 14% 16%;
-    --sidebar-accent-foreground: 30 10% 92%;
-    --sidebar-border: 220 12% 20%;
-    --sidebar-ring: 158 50% 48%;
+    --sidebar-background: 222 47% 9%;
+    --sidebar-foreground: 215 20% 78%;
+    --sidebar-primary: 221 83% 60%;
+    --sidebar-primary-foreground: 222 47% 7%;
+    --sidebar-accent: 222 30% 16%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 25% 20%;
+    --sidebar-ring: 221 83% 60%;
   }
 }
 
@@ -156,7 +160,6 @@
   }
 
   html {
-    font-feature-settings: "cv11", "ss01", "ss03";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -168,39 +171,62 @@
     font-feature-settings: "cv11", "ss01";
   }
 
-  /* Focus ring consistente — crítico para navegação por teclado */
+  /* Display — Space Grotesk para títulos */
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  /* Focus ring — clique seguro VEXO */
   *:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 
-  /* Números tabulares para dados financeiros */
+  /* Números tabulares e mono pra dados estruturais */
   .tabular {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
+  .mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "calt", "liga";
+  }
 
   /* Scrollbar refinada */
-  ::-webkit-scrollbar {
-    @apply w-2 h-2;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-border-strong rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/40;
-  }
+  ::-webkit-scrollbar { @apply w-2 h-2; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-border-strong rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/40; }
 }
 
 @layer components {
-  /* Atalho de teclado visual (kbd) */
+  /* Atalho de teclado visual */
   .kbd {
     @apply inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5
            text-[10px] font-medium font-mono
            bg-muted text-muted-foreground
            border border-border rounded
            shadow-[0_1px_0_0_hsl(var(--border-strong))];
+  }
+
+  /* Wordmark oficial — >VEXO< com operadores matemáticos preservados */
+  .vexo-wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: hsl(var(--foreground));
+  }
+  .vexo-wordmark .op {
+    font-family: var(--font-mono);
+    font-weight: 400;
+    color: hsl(var(--primary));
+    margin: 0 0.15em;
+  }
+  .vexo-tagline {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.04em;
+    color: hsl(var(--muted-foreground));
+    text-transform: lowercase;
   }
 }
