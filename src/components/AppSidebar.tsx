@@ -5,7 +5,6 @@ import {
   ShieldAlert,
   BarChart3,
   Settings,
-  Box,
   Truck,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -32,18 +31,13 @@ export function AppSidebar() {
 
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-      {/* Logo */}
-      <div className="flex h-14 items-center gap-2.5 px-4 border-b border-sidebar-border">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
-          <Box className="h-4 w-4" strokeWidth={2.5} />
-        </div>
+      {/* Wordmark VEXO oficial */}
+      <div className="flex h-14 items-center px-4 border-b border-sidebar-border">
         <div className="min-w-0">
-          <div className="text-sm font-semibold leading-tight text-sidebar-foreground">
-            Devoluções Pro
+          <div className="vexo-wordmark text-lg leading-none">
+            <span className="op">&gt;</span>VEXO<span className="op">&lt;</span>
           </div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Controle E-commerce
-          </div>
+          <div className="vexo-tagline mt-1">software &amp; solutions</div>
         </div>
       </div>
 
@@ -118,13 +112,13 @@ export function AppSidebar() {
         </ul>
       </nav>
 
-      {/* Footer info */}
+      {/* Selo de endosso powered by >VEXO< — rodapé absoluto da sidebar */}
       <div className="border-t border-sidebar-border px-4 py-3">
         <p className="text-[10px] text-muted-foreground">
-          Demo local · {devolucoes.length} registros
+          powered by <span className="vexo-wordmark text-[11px]"><span className="op">&gt;</span>VEXO<span className="op">&lt;</span></span>
         </p>
-        <p className="mt-0.5 text-[10px] text-muted-foreground">
-          Pressione <span className="kbd">?</span> para atalhos
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          {devolucoes.length} registros · <span className="kbd">?</span> atalhos
         </p>
       </div>
     </aside>

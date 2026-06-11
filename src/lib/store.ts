@@ -403,8 +403,8 @@ export const useStore = create<State & Actions>()(
         }),
     }),
     {
-      name: "devolucoes-pro-v1",
-      version: 5,
+      name: "vexo-devolucoes-v1",
+      version: 6,
       migrate: (persistedState, version) => {
         const s = persistedState as Partial<State> | undefined;
         if (!s) return s as unknown as State & Actions;
