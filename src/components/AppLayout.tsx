@@ -1,18 +1,96 @@
+/**
+ * AppLayout.tsx — VEXO DevolucaoPro
+ *
+ * Responsabilidades adicionadas vs. versão original:
+ *  1. Detecta sessão Supabase (auth guard)
+ *  2. Chama store.initialize() uma vez após auth confirmada
+ *  3. Exibe loading spinner enquanto carrega dados
+ *  4. Redireciona para o hub de login VEXO se não autenticado
+ */
+
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { AppTopbar } from "./AppTopbar";
 import { MobileNav } from "./MobileNav";
 import { useTheme } from "@/hooks/use-theme";
+import { supabase } from "@/lib/supabase";
+import { useStore } from "@/lib/store";
+import { Loader2 } from "lucide-react";
+
+// ─── URL do hub de autenticação VEXO ───────────────────────────────────────
+// Quando não autenticado, o usuário é redirecionado para cá.
+const AUTH_HUB_URL = import.meta.env.VITE_AUTH_HUB_URL ?? "https://auth.vexodev.com.br";
+
+// ─── Query param que o hub usa para indicar o módulo de destino ─────────────
+// Ex: auth.vexodev.com.br?redirect=devolucoes.vexodev.com.br
+const REDIRECT_PARAM = `?redirect=${encodeURIComponent(window.location.origin)}`;
 
 export function AppLayout() {
-  // mounts the theme effect
   useTheme();
+
+  const initialize   = useStore((s) => s.initialize);
+  const _initialized = useStore((s) => s._initialized);
+  const _loading     = useStore((s) => s._loading);
+
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authed, setAuthed]           = useState(false);
+
+  // ── 1. Verifica sessão ao montar ──────────────────────────────────────────
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        setAuthed(true);
+      } else {
+        // Sem sessão → redireciona para o hub de login
+        window.location.href = `${AUTH_HUB_URL}${REDIRECT_PARAM}`;
+      }
+      setAuthChecked(true);
+    });
+
+    // Listener para mudanças de sessão (logout externo, token expirado)
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        window.location.href = `${AUTH_HUB_URL}${REDIRECT_PARAM}`;
+      }
+      if (event === "SIGNED_IN" && session) {
+        setAuthed(true);
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  // ── 2. Inicializa store quando auth estiver confirmada ────────────────────
+  useEffect(() => {
+    if (authed && !_initialized && !_loading) {
+      initialize();
+    }
+  }, [authed, _initialized, _loading, initialize]);
+
+  // ── 3. Loading state ──────────────────────────────────────────────────────
+  const isLoading = !authChecked || (authed && !_initialized);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">
+            Carregando Devoluções PRO…
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── 4. Layout principal ───────────────────────────────────────────────────
   return (
     <div
       className="flex min-h-screen w-full bg-background"
       style={{
-        paddingTop: "env(safe-area-inset-top)",
-        paddingLeft: "env(safe-area-inset-left)",
+        paddingTop:   "env(safe-area-inset-top)",
+        paddingLeft:  "env(safe-area-inset-left)",
         paddingRight: "env(safe-area-inset-right)",
       }}
     >
