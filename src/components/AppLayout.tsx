@@ -13,10 +13,13 @@ import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { AppTopbar } from "./AppTopbar";
 import { MobileNav } from "./MobileNav";
+import { InstallPrompt } from "./InstallPrompt";
+import { OfflineBanner } from "./OfflineBanner";
+import { BrandedLoader } from "./BrandedLoader";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
-import { Loader2 } from "lucide-react";
+
 
 // ─── URL do hub de autenticação VEXO ───────────────────────────────────────
 // Quando não autenticado, o usuário é redirecionado para cá.
@@ -72,17 +75,9 @@ export function AppLayout() {
   const isLoading = !authChecked || (authed && !_initialized);
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">
-            Carregando Devoluções PRO…
-          </p>
-        </div>
-      </div>
-    );
+    return <BrandedLoader />;
   }
+
 
   // ── 4. Layout principal ───────────────────────────────────────────────────
   return (
@@ -96,6 +91,7 @@ export function AppLayout() {
     >
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
+        <OfflineBanner />
         <AppTopbar />
         <main className="flex-1 px-4 py-5 md:px-8 md:py-7 pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-7">
           <div className="mx-auto w-full max-w-[1400px] animate-fade-in">
@@ -104,6 +100,7 @@ export function AppLayout() {
         </main>
       </div>
       <MobileNav />
+      <InstallPrompt />
     </div>
   );
 }
