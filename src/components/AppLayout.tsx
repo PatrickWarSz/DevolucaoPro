@@ -24,7 +24,7 @@ const AUTH_HUB_URL = import.meta.env.VITE_AUTH_HUB_URL ?? "https://auth.vexodev.
 
 // ─── Query param que o hub usa para indicar o módulo de destino ─────────────
 // Ex: auth.vexodev.com.br?redirect=devolucoes.vexodev.com.br
-const REDIRECT_PARAM = `?redirect=${encodeURIComponent(window.location.origin)}`;
+const REDIRECT_PARAM = `?app=devolucoes&redirect=${encodeURIComponent(window.location.origin)}`;
 
 export function AppLayout() {
   useTheme();
