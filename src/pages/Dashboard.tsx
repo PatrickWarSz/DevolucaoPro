@@ -33,6 +33,7 @@ import {
   quantidadeTotal,
 } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
+import { AiInsights, type AiInsightPayload } from "@/components/AiInsights";
 import {
   Table,
   TableBody,
@@ -262,6 +263,43 @@ export default function Dashboard() {
     [filtradas],
   );
   const pageData = ordenadas.slice((pagina - 1) * PAGE, pagina * PAGE);
+
+  // Payload enxuto para a IA — só agregados, nada de PII de pedido.
+  const aiPayload = useMemo<AiInsightPayload>(() => ({
+    recorte: {
+      competencia: fCompetencia === ALL ? undefined : fCompetencia,
+      empresa: fEmpresa === ALL ? undefined : lookup(empresas, fEmpresa),
+      plataforma: fPlataforma === ALL ? undefined : lookup(plataformas, fPlataforma),
+      status: fStatus === ALL ? undefined : statusLabel[fStatus as keyof typeof statusLabel] ?? fStatus,
+      motivo: fMotivo === ALL ? undefined : lookup(motivos, fMotivo),
+    },
+    totais: {
+      totalDevolucoes: stats.totalDevolucoes,
+      totalItens: stats.totalItens,
+      valorPerda: Math.round(stats.valorPerda * 100) / 100,
+      valorRecuperado: Math.round(stats.valorRecuperado * 100) / 100,
+      disputasAbertas: stats.disputasAbertas,
+      valorEmDisputa: Math.round(stats.valorEmDisputa * 100) / 100,
+      taxaRecuperacao: Math.round(stats.taxaRecuperacao * 10) / 10,
+    },
+    evolucaoMensal: evolucaoMensal.map((m) => ({
+      mes: m.mes,
+      resolvidas: Math.round(m.resolvidas),
+      disputas: Math.round(m.disputas),
+      perdas: Math.round(m.perdas),
+    })),
+    porEmpresa,
+    porMotivo,
+    produtos: produtosAnalise.slice(0, 10).map((p) => ({
+      modelo: p.modelo,
+      qtdTotal: p.qtdTotal,
+      devolucoesCount: p.devolucoesCount,
+      motivos: p.motivos.slice(0, 5),
+      tamanhos: p.tamanhos.slice(0, 5),
+      cores: p.cores.slice(0, 5),
+      defeitos: p.defeitos.slice(0, 5),
+    })),
+  }), [stats, evolucaoMensal, porEmpresa, porMotivo, produtosAnalise, fCompetencia, fEmpresa, fPlataforma, fStatus, fMotivo, empresas, plataformas, motivos]);
 
   const exportar = () => {
     // Exporta uma linha por ITEM, com dados do header repetidos para análise no Excel
