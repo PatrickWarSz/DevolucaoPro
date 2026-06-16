@@ -1,4 +1,4 @@
-import { Sun, Moon, Search, Truck } from "lucide-react";
+import { Sun, Moon, Search, Truck, User as UserIcon, LogOut, Shield } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
@@ -13,9 +13,18 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { useEffect } from "react";
 import { fmtBRL, statusLabel, valorTotal } from "@/lib/format";
 import { lookup } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 
 export function AppTopbar() {
   const { theme, toggle } = useTheme();
