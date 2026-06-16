@@ -1,4 +1,4 @@
-import { Sun, Moon, Search, Truck } from "lucide-react";
+import { Sun, Moon, Search, Truck, User as UserIcon, LogOut, Shield } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
@@ -13,9 +13,18 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { useEffect } from "react";
 import { fmtBRL, statusLabel, valorTotal } from "@/lib/format";
 import { lookup } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 
 export function AppTopbar() {
   const { theme, toggle } = useTheme();
@@ -26,6 +35,27 @@ export function AppTopbar() {
   const plataformas = useStore((s) => s.plataformas);
   const modelos = useStore((s) => s.modelos);
   const pedidosACaminho = useStore((s) => s.pedidosACaminho);
+  const [user, setUser] = useState<{ email: string; name: string; initial: string } | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const u = data.user;
+      if (!u) return;
+      const meta = (u.user_metadata ?? {}) as Record<string, string>;
+      const name = meta.full_name || meta.name || (u.email ? u.email.split("@")[0] : "Usuário");
+      setUser({
+        email: u.email ?? "",
+        name,
+        initial: (name[0] ?? "U").toUpperCase(),
+      });
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    const hub = (import.meta.env.VITE_AUTH_HUB_URL as string) ?? "https://auth.vexodev.com.br";
+    window.location.href = `${hub}?app=devolucoes&redirect=${encodeURIComponent(window.location.origin)}`;
+  };
 
   const disputaCount = useMemo(
     () => devolucoes.filter((d) => d.status === "dispute").length,
@@ -95,6 +125,36 @@ export function AppTopbar() {
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
+          {user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 gap-2 px-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                    {user.initial}
+                  </div>
+                  <span className="hidden text-xs font-medium md:inline">{user.name}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel>
+                  <div className="font-semibold">{user.name}</div>
+                  {user.email && (
+                    <div className="text-xs font-normal text-muted-foreground truncate">
+                      {user.email}
+                    </div>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
 
