@@ -35,6 +35,27 @@ export function AppTopbar() {
   const plataformas = useStore((s) => s.plataformas);
   const modelos = useStore((s) => s.modelos);
   const pedidosACaminho = useStore((s) => s.pedidosACaminho);
+  const [user, setUser] = useState<{ email: string; name: string; initial: string } | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const u = data.user;
+      if (!u) return;
+      const meta = (u.user_metadata ?? {}) as Record<string, string>;
+      const name = meta.full_name || meta.name || (u.email ? u.email.split("@")[0] : "Usuário");
+      setUser({
+        email: u.email ?? "",
+        name,
+        initial: (name[0] ?? "U").toUpperCase(),
+      });
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    const hub = (import.meta.env.VITE_AUTH_HUB_URL as string) ?? "https://auth.vexodev.com.br";
+    window.location.href = `${hub}?app=devolucoes&redirect=${encodeURIComponent(window.location.origin)}`;
+  };
 
   const disputaCount = useMemo(
     () => devolucoes.filter((d) => d.status === "dispute").length,
