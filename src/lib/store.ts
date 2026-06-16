@@ -15,7 +15,7 @@
 
 import { create } from "zustand";
 import { toast } from "sonner";
-import { getWorkspaceId } from "./supabase";
+import { supabase, getWorkspaceId } from "./supabase";
 import * as db from "./db";
 import {
   fetchCatalogo,
@@ -191,9 +191,20 @@ export const useStore = create<State & Actions>()((set, get) => {
     initialize: async () => {
       set({ _loading: true });
       try {
+        // 1. TRAVA DE SEGURANÇA: Espera o Supabase ler o cookie
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          console.log("[VEXO] Aguardando autenticação para carregar os dados...");
+          // Interrompe aqui sem marcar como initialized, para o AppLayout chamar de novo
+          set({ _loading: false });
+          return;
+        }
+
+        // 2. Agora sim, com o usuário garantido, busca o workspace_id
         const wsId = await getWorkspaceId();
         if (!wsId) {
-          console.warn("[VEXO] Workspace não encontrado — usuário não autenticado?");
+          console.warn("[VEXO] Workspace não encontrado — usuário não tem workspace atrelado.");
           set({ _loading: false, _initialized: true });
           return;
         }
