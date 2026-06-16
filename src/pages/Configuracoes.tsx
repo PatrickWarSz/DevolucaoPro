@@ -4,35 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStore } from "@/lib/store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Plus, Database } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 export default function Configuracoes() {
   const { toast } = useToast();
-  const resetSeed = useStore((s) => s.resetSeed);
+  void toast;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Configurações"
         description="Gerencie as opções que aparecem nos formulários de registro."
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (confirm("Restaurar dados de demonstração? Tudo será sobrescrito.")) {
-                resetSeed();
-                toast({ title: "Dados restaurados ao seed inicial" });
-              }
-            }}
-          >
-            <Database className="h-3.5 w-3.5 mr-1.5" />
-            Restaurar demo
-          </Button>
-        }
       />
+
 
       <Tabs defaultValue="empresas" className="space-y-4">
         <TabsList className="bg-surface-muted">
