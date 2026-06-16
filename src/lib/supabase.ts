@@ -10,16 +10,35 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   );
 }
 
+// GERENCIADOR DE COOKIES COMPARTILHADO (Igualzinho ao seu programa de Estoque)
+const cookieStorage = {
+  getItem: (key: string) => {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+  },
+  setItem: (key: string, value: string) => {
+    if (typeof document === 'undefined') return;
+    document.cookie = `${key}=${encodeURIComponent(value)}; domain=.vexodev.com.br; path=/; max-age=31536000; SameSite=Lax; secure`;
+  },
+  removeItem: (key: string) => {
+    if (typeof document === 'undefined') return;
+    document.cookie = `${key}=; domain=.vexodev.com.br; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  }
+};
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
+    persistSession: true,
     autoRefreshToken: true,
-    persistSession: true,     // mantém sessão no localStorage do browser
-    detectSessionInUrl: true, // captura tokens no hash da URL (redirect do auth hub)
+    detectSessionInUrl: true,
+    storage: cookieStorage, // Trocado localStorage por cookieStorage!
+    flowType: 'pkce',      // Alinhado com o fluxo do Estoque!
   },
 });
 
 // ──────────────────────────────────────────────
-// Helpers de autenticação
+// Seus Helpers de autenticação originais (Mantidos intactos)
 // ──────────────────────────────────────────────
 
 /** Retorna o ID do workspace do usuário logado (via tabela `usuarios`). */
