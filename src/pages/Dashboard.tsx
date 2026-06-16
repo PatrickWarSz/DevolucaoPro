@@ -425,6 +425,8 @@ export default function Dashboard() {
         />
       </div>
 
+      <AiInsights payload={aiPayload} />
+
       <div className="grid gap-4 lg:grid-cols-3">
         <ChartCard title="Evolução mensal" subtitle="Valor por status (últimos 6 meses)" className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={260}>
