@@ -41,17 +41,101 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 // Seus Helpers de autenticação originais (Mantidos intactos)
 // ──────────────────────────────────────────────
 
-/** Retorna o ID do workspace do usuário logado (via tabela `usuarios`). */
+/**
+ * Permissões padrão para um novo usuário admin auto-provisionado
+ * (acesso total ao módulo de devoluções).
+ */
+function defaultPermissoes() {
+  return {
+    estoque: true,
+    pedidos: true,
+    fornecedores: true,
+    historico: true,
+    scanner: true,
+    etiquetas: true,
+    configuracoes: true,
+    devolucoes: true,
+  };
+}
+
+/**
+ * Garante que o usuário logado tenha uma linha em `usuarios` + um `workspace`
+ * vinculado. Se já existir, apenas retorna o workspace_id. Caso contrário,
+ * cria workspace + usuario (auto-provisionamento para quem entra direto pelo
+ * Devoluções Pro sem ter passado pelo Estoque Pro).
+ */
 export async function getWorkspaceId(): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("usuarios")
-    .select("workspace_id")
-    .maybeSingle();
-  if (error) {
-    console.error("[VEXO] getWorkspaceId error:", error.message);
+  // 1. Usuário logado
+  const { data: authData, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !authData.user) {
+    console.error("[VEXO] getWorkspaceId: sem usuário autenticado.");
     return null;
   }
-  return data?.workspace_id ?? null;
+  const user = authData.user;
+
+  // 2. Tenta achar a linha em `usuarios` (filtro explícito por id)
+  const { data: row, error: selErr } = await supabase
+    .from("usuarios")
+    .select("workspace_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (selErr) {
+    console.error("[VEXO] getWorkspaceId select error:", selErr.message);
+    return null;
+  }
+  if (row?.workspace_id) return row.workspace_id;
+
+  // 3. Auto-provisionamento — não existe usuario nem workspace vinculado
+  console.log("[VEXO] Provisionando workspace para novo usuário…");
+  const meta = (user.user_metadata ?? {}) as Record<string, string>;
+  const nome = meta.full_name || meta.name || (user.email?.split("@")[0] ?? "Usuário");
+  const username = (user.email ?? `user_${user.id.slice(0, 8)}`).toLowerCase();
+  // Documento placeholder (15d) — usuário pode atualizar depois nas configurações
+  const placeholderDoc = `D${Date.now()}`.slice(0, 14);
+
+  const trialEnd = new Date();
+  trialEnd.setDate(trialEnd.getDate() + 15);
+
+  const { data: ws, error: wsErr } = await supabase
+    .from("workspaces")
+    .insert([
+      {
+        cnpj_cpf: placeholderDoc,
+        nome_empresa: meta.company_name || `${nome} - Devoluções`,
+        cpf_titular: placeholderDoc,
+        status_assinatura: "trialing",
+        plano_atual: "devolucoes_pro",
+        data_vencimento: trialEnd.toISOString(),
+      },
+    ])
+    .select("id")
+    .single();
+
+  if (wsErr || !ws) {
+    console.error("[VEXO] getWorkspaceId: falha ao criar workspace:", wsErr?.message);
+    return null;
+  }
+
+  const { error: uErr } = await supabase.from("usuarios").insert([
+    {
+      id: user.id,
+      workspace_id: ws.id,
+      nome,
+      username,
+      tipo: "admin",
+      permissoes: defaultPermissoes(),
+      ativo: true,
+      senha_hash: "managed_by_auth",
+    },
+  ]);
+
+  if (uErr) {
+    console.error("[VEXO] getWorkspaceId: falha ao criar usuario:", uErr.message);
+    return null;
+  }
+
+  return ws.id;
 }
 
 /** Retorna a sessão atual. Null se não autenticado. */
