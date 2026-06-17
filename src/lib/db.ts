@@ -188,7 +188,7 @@ export async function insertDevolucao(
   if (d.itens.length > 0) {
     const { error: errItens } = await supabase.from("dev_devolucao_itens").insert(
       d.itens.map((it) => ({
-        id:           it.id,
+        id:           crypto.randomUUID(),
         workspace_id: wsId,
         devolucao_id: id,
         modelo_id:    it.modeloId  || null,
@@ -252,7 +252,7 @@ export async function insertPedidoACaminho(
   if (p.itens.length > 0) {
     const { error: errItens } = await supabase.from("dev_pedido_a_caminho_itens").insert(
       p.itens.map((it) => ({
-        id:                   it.id,
+        id:                   crypto.randomUUID(),
         workspace_id:         wsId,
         pedido_a_caminho_id:  id,
         modelo_id:            it.modeloId || null,

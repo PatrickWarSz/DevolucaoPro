@@ -241,7 +241,7 @@ export const useStore = create<State & Actions>()((set, get) => {
         ...d,
         id,
         createdAt: new Date().toISOString(),
-        itens: d.itens.map((it) => ({ ...it, id: it.id || uid() })),
+        itens: d.itens.map((it) => ({ ...it, id: uid() })),
       };
       set((s) => ({ devolucoes: [novo, ...s.devolucoes] }));
       if (_workspaceId) {
@@ -294,7 +294,7 @@ export const useStore = create<State & Actions>()((set, get) => {
         ...p,
         id,
         createdAt: new Date().toISOString(),
-        itens: p.itens.map((it) => ({ ...it, id: it.id || uid() })),
+        itens: p.itens.map((it) => ({ ...it, id: uid() })),
       };
       set((s) => ({ pedidosACaminho: [novo, ...s.pedidosACaminho] }));
       if (_workspaceId) {
