@@ -14,7 +14,12 @@ import { useState } from "react";
 import { Sparkles, AlertTriangle, TrendingUp, ListChecks, MessageSquare, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/lib/supabase";
+// AI Insights roda no Lovable Cloud (projeto separado do banco do app).
+// Chamamos via fetch direto pra não depender do client supabase do app.
+const AI_INSIGHTS_URL =
+  "https://dwnhhapypwvisjviwzbb.supabase.co/functions/v1/ai-insights";
+const AI_INSIGHTS_ANON =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3bmhoYXB5cHd2aXNqdml3emJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NDY1ODUsImV4cCI6MjA5NzMyMjU4NX0.DgrmIp342zRiXsbEqd_u7awW4r3NUfhV2w7rYaU9r44";
 import { useToast } from "@/hooks/use-toast";
 
 interface Insight {
@@ -77,12 +82,20 @@ export function AiInsights({ payload }: Props) {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("ai-insights", {
-        body: { ...payload, pergunta: perguntaTexto },
+      const res = await fetch(AI_INSIGHTS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${AI_INSIGHTS_ANON}`,
+          apikey: AI_INSIGHTS_ANON,
+        },
+        body: JSON.stringify({ ...payload, pergunta: perguntaTexto }),
       });
-      if (error) throw error;
-      if ((data as { error?: string })?.error) {
-        throw new Error((data as { error: string }).error);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data as { error?: string })?.error) {
+        throw new Error(
+          (data as { error?: string })?.error ?? `Falha na IA (HTTP ${res.status})`,
+        );
       }
       setInsight(data as Insight);
       setUltimaPergunta(perguntaTexto ?? null);
