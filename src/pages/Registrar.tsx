@@ -304,6 +304,18 @@ export default function Registrar() {
         return;
       }
     }
+    // Auto-vincular cor/tamanho ao modelo (poupa o trabalho manual em Configurações)
+    const { modeloVariantes, toggleModeloCor, toggleModeloTamanho } = useStore.getState();
+    form.itens.forEach((it) => {
+      if (!it.modeloId) return;
+      const mv = modeloVariantes.find((m) => m.modeloId === it.modeloId);
+      if (it.cor && !(mv?.cores ?? []).includes(it.cor)) {
+        toggleModeloCor(it.modeloId, it.cor);
+      }
+      if (it.tamanho && !(mv?.tamanhos ?? []).includes(it.tamanho)) {
+        toggleModeloTamanho(it.modeloId, it.tamanho);
+      }
+    });
     addDevolucao({
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
@@ -326,6 +338,7 @@ export default function Registrar() {
         valor: idx === 0 ? totalCalc : 0,
       })),
     });
+
     // Se a devolução foi criada a partir de um pedido a caminho, remove-o da lista
     if (pedidoOriginalId) {
       deletePedidoACaminho(pedidoOriginalId);
