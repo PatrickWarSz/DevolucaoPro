@@ -342,6 +342,8 @@ export default function Registrar() {
         form.status === "resolved" ? totalCalc
         : form.status === "loss"    ? perda
         : undefined,
+      notas: form.notas.trim() || undefined,
+
       // Distribui o valor total uniformemente entre os itens — assim a soma
       // bate com o total do pedido e nenhum item fica "zerado" no display.
       itens: form.itens.map((it) => ({
