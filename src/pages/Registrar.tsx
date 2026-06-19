@@ -28,6 +28,7 @@ interface FormState {
   tipoDefeitoId: string;
   status: ReturnStatus;
   valorPedido: number; // valor total da devolução (único, não por item)
+  valorPerda: number;  // valor REAL da perda quando status = loss (pode ser < valorPedido)
   itens: ItemForm[];
 }
 
@@ -58,8 +59,10 @@ const empty = (): FormState => ({
   tipoDefeitoId: "",
   status: "resolved",
   valorPedido: 0,
+  valorPerda: 0,
   itens: [emptyItem()],
 });
+
 
 const statusOptions: { value: ReturnStatus; label: string; Icon: typeof CheckCircle2; cls: string }[] = [
   {
