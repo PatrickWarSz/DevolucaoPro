@@ -304,8 +304,22 @@ export default function Dashboard() {
       tamanhos: p.tamanhos.slice(0, 5),
       cores: p.cores.slice(0, 5),
       defeitos: p.defeitos.slice(0, 5),
+      notas: p.notas.slice(0, 8),
     })),
-  }), [stats, evolucaoMensal, porEmpresa, porMotivo, produtosAnalise, fCompetencia, fEmpresa, fPlataforma, fStatus, fMotivo, empresas, plataformas, motivos]);
+    // Notas recentes do recorte — contexto qualitativo que a IA cruza com os agregados.
+    // Limitamos a 25 itens (mais recentes) e 240 chars cada, pra evitar payload gigante.
+    notasRecentes: filtradas
+      .filter((d) => (d.notas ?? "").trim().length > 0)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 25)
+      .map((d) => ({
+        modelo: d.itens[0] ? lookup(modelos, d.itens[0].modeloId) : "—",
+        motivo: lookup(motivos, d.motivoId),
+        status: statusLabel[d.status],
+        nota: (d.notas ?? "").trim().slice(0, 240),
+      })),
+  }), [stats, evolucaoMensal, porEmpresa, porMotivo, produtosAnalise, filtradas, fCompetencia, fEmpresa, fPlataforma, fStatus, fMotivo, empresas, plataformas, motivos, modelos]);
+
 
   const exportar = () => {
     // Exporta uma linha por ITEM, com dados do header repetidos para análise no Excel
