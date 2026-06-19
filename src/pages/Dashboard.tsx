@@ -900,7 +900,9 @@ type ProdutoAnalise = {
   cores: Breakdown[];
   defeitos: Breakdown[];
   componentes: Breakdown[];
+  notas: string[];
 };
+
 
 function ProdutoAnaliseRow({
   rank,
