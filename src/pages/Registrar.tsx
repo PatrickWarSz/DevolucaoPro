@@ -244,7 +244,9 @@ export default function Registrar() {
       pedidoId: p.pedidoId,
       devolucaoId: p.devolucaoId ?? "",
       motivoId: p.motivoId ?? f.motivoId,
+      notas: p.notas ?? f.notas,
       valorPedido: totalPedido,
+
       itens: p.itens.map((it) => ({
         id: localUid(),
         modeloId: it.modeloId,
