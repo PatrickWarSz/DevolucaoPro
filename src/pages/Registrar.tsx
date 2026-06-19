@@ -318,18 +318,11 @@ export default function Registrar() {
         return;
       }
     }
-    // Auto-vincular cor/tamanho ao modelo (poupa o trabalho manual em Configurações)
-    const { modeloVariantes, toggleModeloCor, toggleModeloTamanho } = useStore.getState();
-    form.itens.forEach((it) => {
-      if (!it.modeloId) return;
-      const mv = modeloVariantes.find((m) => m.modeloId === it.modeloId);
-      if (it.cor && !(mv?.cores ?? []).includes(it.cor)) {
-        toggleModeloCor(it.modeloId, it.cor);
-      }
-      if (it.tamanho && !(mv?.tamanhos ?? []).includes(it.tamanho)) {
-        toggleModeloTamanho(it.modeloId, it.tamanho);
-      }
-    });
+    // Valor da perda (status loss). Se o usuário não informou, assume valor
+    // total do pedido. Se informou 0 explicitamente, respeita 0.
+    const perda = form.status === "loss"
+      ? (Number(form.valorPerda) || 0)
+      : undefined;
     addDevolucao({
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
@@ -339,19 +332,24 @@ export default function Registrar() {
       motivoId: form.motivoId,
       tipoDefeitoId: exigeTipoDefeito ? form.tipoDefeitoId || undefined : undefined,
       status: form.status,
-      valorRecuperado: form.status === "resolved" ? totalCalc : undefined,
-      // Valor total é único da devolução. Para preservar o modelo (valor por item),
-      // colocamos todo o valor no primeiro item e zeramos os demais.
-      itens: form.itens.map((it, idx) => ({
+      // valorRecuperado guarda: total recuperado (resolved) OU valor real da perda (loss)
+      valorRecuperado:
+        form.status === "resolved" ? totalCalc
+        : form.status === "loss"    ? perda
+        : undefined,
+      // Distribui o valor total uniformemente entre os itens — assim a soma
+      // bate com o total do pedido e nenhum item fica "zerado" no display.
+      itens: form.itens.map((it) => ({
         id: it.id,
         modeloId: it.modeloId,
         pecaId: it.pecaId,
         cor: it.cor,
         tamanho: it.tamanho,
         quantidade: Number(it.quantidade),
-        valor: idx === 0 ? totalCalc : 0,
+        valor: form.itens.length > 0 ? totalCalc / form.itens.length : 0,
       })),
     });
+
 
     // Se a devolução foi criada a partir de um pedido a caminho, remove-o da lista
     if (pedidoOriginalId) {
