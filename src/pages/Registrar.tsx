@@ -29,6 +29,7 @@ interface FormState {
   status: ReturnStatus;
   valorPedido: number; // valor total da devolução (único, não por item)
   valorPerda: number;  // valor REAL da perda quando status = loss (pode ser < valorPedido)
+  notas: string;       // observações livres — usadas pela IA do dashboard pra contexto qualitativo
   itens: ItemForm[];
 }
 
@@ -60,8 +61,10 @@ const empty = (): FormState => ({
   status: "resolved",
   valorPedido: 0,
   valorPerda: 0,
+  notas: "",
   itens: [emptyItem()],
 });
+
 
 
 const statusOptions: { value: ReturnStatus; label: string; Icon: typeof CheckCircle2; cls: string }[] = [
