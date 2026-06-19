@@ -224,6 +224,16 @@ export default function Registrar() {
 
   const aplicarPedido = (p: PedidoACaminho) => {
     const totalPedido = p.itens.reduce((s, it) => s + Number(it.valor || 0), 0);
+    // Garante que a empresa+plataforma do pedido a caminho estão vinculadas
+    // como conta — caso contrário o useEffect de plataformasDisponiveis limparia
+    // o plataformaId logo após o setForm.
+    const { contas: contasNow, toggleConta } = useStore.getState();
+    const hasConta = contasNow.some(
+      (c) => c.empresaId === p.empresaId && c.plataformaId === p.plataformaId,
+    );
+    if (p.empresaId && p.plataformaId && !hasConta) {
+      toggleConta(p.empresaId, p.plataformaId);
+    }
     setForm((f) => ({
       ...f,
       empresaId: p.empresaId,
@@ -249,6 +259,7 @@ export default function Registrar() {
       description: `${p.pedidoId} · ${p.itens.length} item(ns) preenchido(s).`,
     });
   };
+
 
   const limparVinculo = () => {
     setPedidoOriginalId(null);
