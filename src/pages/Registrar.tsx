@@ -734,7 +734,29 @@ export default function Registrar() {
                 );
               })}
             </div>
+
+            {form.status === "loss" && (
+              <div className="mt-3 rounded-md border border-destructive/30 bg-destructive-soft/40 px-3 py-2.5">
+                <Label className="text-xs font-medium text-destructive-soft-foreground">
+                  Valor real da perda (R$) *
+                </Label>
+                <p className="text-[11px] text-destructive-soft-foreground/80 mt-0.5">
+                  Quanto a empresa perdeu de fato neste pedido (descontando reembolso parcial, taxas etc.).
+                  Geralmente é menor que o valor total do pedido.
+                </p>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="0,00"
+                  value={form.valorPerda || ""}
+                  onChange={(e) => set("valorPerda", Number(e.target.value))}
+                  className="mt-2 tabular text-base font-medium bg-card"
+                />
+              </div>
+            )}
           </div>
+
 
           {/* Itens */}
           <div className="border-t border-border bg-surface-muted/30 px-5 py-3">
