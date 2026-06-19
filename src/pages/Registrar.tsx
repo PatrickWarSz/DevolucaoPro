@@ -28,6 +28,7 @@ interface FormState {
   tipoDefeitoId: string;
   status: ReturnStatus;
   valorPedido: number; // valor total da devolução (único, não por item)
+  valorPerda: number;  // valor REAL da perda quando status = loss (pode ser < valorPedido)
   itens: ItemForm[];
 }
 
@@ -58,8 +59,10 @@ const empty = (): FormState => ({
   tipoDefeitoId: "",
   status: "resolved",
   valorPedido: 0,
+  valorPerda: 0,
   itens: [emptyItem()],
 });
+
 
 const statusOptions: { value: ReturnStatus; label: string; Icon: typeof CheckCircle2; cls: string }[] = [
   {
@@ -221,6 +224,16 @@ export default function Registrar() {
 
   const aplicarPedido = (p: PedidoACaminho) => {
     const totalPedido = p.itens.reduce((s, it) => s + Number(it.valor || 0), 0);
+    // Garante que a empresa+plataforma do pedido a caminho estão vinculadas
+    // como conta — caso contrário o useEffect de plataformasDisponiveis limparia
+    // o plataformaId logo após o setForm.
+    const { contas: contasNow, toggleConta } = useStore.getState();
+    const hasConta = contasNow.some(
+      (c) => c.empresaId === p.empresaId && c.plataformaId === p.plataformaId,
+    );
+    if (p.empresaId && p.plataformaId && !hasConta) {
+      toggleConta(p.empresaId, p.plataformaId);
+    }
     setForm((f) => ({
       ...f,
       empresaId: p.empresaId,
@@ -246,6 +259,7 @@ export default function Registrar() {
       description: `${p.pedidoId} · ${p.itens.length} item(ns) preenchido(s).`,
     });
   };
+
 
   const limparVinculo = () => {
     setPedidoOriginalId(null);
@@ -304,18 +318,11 @@ export default function Registrar() {
         return;
       }
     }
-    // Auto-vincular cor/tamanho ao modelo (poupa o trabalho manual em Configurações)
-    const { modeloVariantes, toggleModeloCor, toggleModeloTamanho } = useStore.getState();
-    form.itens.forEach((it) => {
-      if (!it.modeloId) return;
-      const mv = modeloVariantes.find((m) => m.modeloId === it.modeloId);
-      if (it.cor && !(mv?.cores ?? []).includes(it.cor)) {
-        toggleModeloCor(it.modeloId, it.cor);
-      }
-      if (it.tamanho && !(mv?.tamanhos ?? []).includes(it.tamanho)) {
-        toggleModeloTamanho(it.modeloId, it.tamanho);
-      }
-    });
+    // Valor da perda (status loss). Se o usuário não informou, assume valor
+    // total do pedido. Se informou 0 explicitamente, respeita 0.
+    const perda = form.status === "loss"
+      ? (Number(form.valorPerda) || 0)
+      : undefined;
     addDevolucao({
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
@@ -325,19 +332,24 @@ export default function Registrar() {
       motivoId: form.motivoId,
       tipoDefeitoId: exigeTipoDefeito ? form.tipoDefeitoId || undefined : undefined,
       status: form.status,
-      valorRecuperado: form.status === "resolved" ? totalCalc : undefined,
-      // Valor total é único da devolução. Para preservar o modelo (valor por item),
-      // colocamos todo o valor no primeiro item e zeramos os demais.
-      itens: form.itens.map((it, idx) => ({
+      // valorRecuperado guarda: total recuperado (resolved) OU valor real da perda (loss)
+      valorRecuperado:
+        form.status === "resolved" ? totalCalc
+        : form.status === "loss"    ? perda
+        : undefined,
+      // Distribui o valor total uniformemente entre os itens — assim a soma
+      // bate com o total do pedido e nenhum item fica "zerado" no display.
+      itens: form.itens.map((it) => ({
         id: it.id,
         modeloId: it.modeloId,
         pecaId: it.pecaId,
         cor: it.cor,
         tamanho: it.tamanho,
         quantidade: Number(it.quantidade),
-        valor: idx === 0 ? totalCalc : 0,
+        valor: form.itens.length > 0 ? totalCalc / form.itens.length : 0,
       })),
     });
+
 
     // Se a devolução foi criada a partir de um pedido a caminho, remove-o da lista
     if (pedidoOriginalId) {
@@ -722,7 +734,29 @@ export default function Registrar() {
                 );
               })}
             </div>
+
+            {form.status === "loss" && (
+              <div className="mt-3 rounded-md border border-destructive/30 bg-destructive-soft/40 px-3 py-2.5">
+                <Label className="text-xs font-medium text-destructive-soft-foreground">
+                  Valor real da perda (R$) *
+                </Label>
+                <p className="text-[11px] text-destructive-soft-foreground/80 mt-0.5">
+                  Quanto a empresa perdeu de fato neste pedido (descontando reembolso parcial, taxas etc.).
+                  Geralmente é menor que o valor total do pedido.
+                </p>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="0,00"
+                  value={form.valorPerda || ""}
+                  onChange={(e) => set("valorPerda", Number(e.target.value))}
+                  className="mt-2 tabular text-base font-medium bg-card"
+                />
+              </div>
+            )}
           </div>
+
 
           {/* Itens */}
           <div className="border-t border-border bg-surface-muted/30 px-5 py-3">

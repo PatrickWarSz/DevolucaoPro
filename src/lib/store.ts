@@ -608,17 +608,18 @@ export const selectVariantesDoModelo = (
   todosTamanhos: { nome: string }[],
   modeloVariantes: ModeloVariantes[]
 ): VariantesResolvidas => {
-  if (!modeloId)
-    return { cores: todasCores, tamanhos: todosTamanhos, hasVinculo: false };
-  const mv = modeloVariantes.find((m) => m.modeloId === modeloId);
-  if (!mv)
-    return { cores: todasCores, tamanhos: todosTamanhos, hasVinculo: false };
+  // Sempre mostra o catálogo COMPLETO de cores/tamanhos no select.
+  // O vínculo com o modelo é só informativo (não filtra) — o usuário precisa
+  // ter acesso a todas as opções, mesmo quando um modelo já tem cores cadastradas,
+  // pra não ficar travado em uma única opção quando precisa registrar variação nova.
+  const mv = modeloId ? modeloVariantes.find((m) => m.modeloId === modeloId) : undefined;
   return {
-    cores:    mv.cores.length > 0 ? mv.cores.map((nome) => ({ nome })) : todasCores,
-    tamanhos: mv.tamanhos.length > 0 ? mv.tamanhos.map((nome) => ({ nome })) : todosTamanhos,
-    hasVinculo: true,
+    cores: todasCores,
+    tamanhos: todosTamanhos,
+    hasVinculo: !!mv && (mv.cores.length > 0 || mv.tamanhos.length > 0),
   };
 };
+
 
 export const lookup = <T extends { id: string; nome: string }>(arr: T[], id: string) =>
   arr.find((x) => x.id === id)?.nome ?? "—";
