@@ -205,6 +205,7 @@ export default function Dashboard() {
       cores: Map<string, number>;
       defeitos: Map<string, number>;
       componentes: Map<string, number>;
+      notas: string[];
     };
     const map = new Map<string, Acc>();
     const bump = (m: Map<string, number>, k: string, n: number) => {
@@ -214,6 +215,7 @@ export default function Dashboard() {
     filtradas.forEach((d) => {
       const motivoNome = lookup(motivos, d.motivoId);
       const defeitoNome = d.tipoDefeitoId ? lookup(tiposDefeito, d.tipoDefeitoId) : "";
+      const notaTrim = (d.notas ?? "").trim();
       d.itens.forEach((it) => {
         const modelo = lookup(modelos, it.modeloId);
         const cur =
@@ -227,6 +229,7 @@ export default function Dashboard() {
             cores: new Map(),
             defeitos: new Map(),
             componentes: new Map(),
+            notas: [],
           } as Acc);
         cur.qtdTotal += it.quantidade;
         cur.devolucoes.add(d.id);
@@ -235,6 +238,7 @@ export default function Dashboard() {
         bump(cur.cores, it.cor, it.quantidade);
         bump(cur.componentes, lookup(pecas, it.pecaId), it.quantidade);
         if (defeitoNome) bump(cur.defeitos, defeitoNome, it.quantidade);
+        if (notaTrim && !cur.notas.includes(notaTrim)) cur.notas.push(notaTrim);
         map.set(modelo, cur);
       });
     });
@@ -252,10 +256,12 @@ export default function Dashboard() {
         cores: toBreakdown(acc.cores),
         defeitos: toBreakdown(acc.defeitos),
         componentes: toBreakdown(acc.componentes),
+        notas: acc.notas,
       }))
       .sort((a, b) => b.qtdTotal - a.qtdTotal)
       .slice(0, topN);
   }, [filtradas, modelos, motivos, tiposDefeito, pecas, topN]);
+
 
   const totalPaginas = Math.max(1, Math.ceil(filtradas.length / PAGE));
   const ordenadas = useMemo(
