@@ -87,11 +87,15 @@ export const motivoGeraPerda = (motivos: Motivo[], motivoId: string) => {
 export const valorEfetivo = (d: Devolucao, motivos?: Motivo[]) => {
   if (d.status === "dispute") return 1;
   const total = valorTotal(d);
-  if (d.status === "loss") return total;
+  // Em perda, o usuário pode informar um valor real de perda menor que o total
+  // do pedido (ex.: reembolso parcial). Guardamos esse valor em `valorRecuperado`
+  // por simplicidade — semanticamente é o "valor da perda" quando status=loss.
+  if (d.status === "loss") return d.valorRecuperado ?? total;
   // resolved
   if (motivos && !motivoGeraPerda(motivos, d.motivoId)) return 0;
   return d.valorRecuperado ?? total;
 };
+
 
 export function downloadCSV(filename: string, rows: Record<string, unknown>[]) {
   if (!rows.length) return;
