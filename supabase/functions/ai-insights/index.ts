@@ -24,6 +24,14 @@ interface ProdutoResumo {
   tamanhos: Breakdown[];
   cores: Breakdown[];
   defeitos: Breakdown[];
+  notas?: string[];
+}
+
+interface NotaRecente {
+  modelo: string;
+  motivo: string;
+  status: string;
+  nota: string;
 }
 
 interface InsightInput {
@@ -47,8 +55,10 @@ interface InsightInput {
   porEmpresa: Array<{ name: string; value: number }>;
   porMotivo: Array<{ name: string; value: number }>;
   produtos: ProdutoResumo[];
+  notasRecentes?: NotaRecente[];
   pergunta?: string;
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -97,7 +107,11 @@ Regras:
 - Quando o usuário fizer uma PERGUNTA, responda no campo "resposta" com foco,
   cruzando com os dados. Se não houver pergunta, deixe "resposta" como null.
 - Cada item de alerta/oportunidade/ação deve ser UMA frase curta e específica.
-- NÃO invente dados que não estão no payload.`;
+- NÃO invente dados que não estão no payload.
+- Quando houver NOTAS qualitativas (observações livres do operador, ex.: "veio com mancha",
+  "tamanho menor que o padrão", "cliente disse que rasgou na primeira lavagem"), use-as
+  para enriquecer o diagnóstico — elas costumam revelar a CAUSA RAIZ que os agregados
+  numéricos não mostram. Cite padrões recorrentes nas notas (palavras/temas que se repetem).`;
 
     const user = `Analise estes dados de devoluções e me entregue insights como se você
 fosse o gerente da operação. Foque no que eu provavelmente NÃO vejo só olhando o
@@ -117,10 +131,18 @@ ${JSON.stringify(body.porEmpresa, null, 2)}
 PRINCIPAIS MOTIVOS (por itens):
 ${JSON.stringify(body.porMotivo, null, 2)}
 
-TOP PRODUTOS QUE MAIS VOLTAM (com motivos, tamanhos, cores e defeitos):
+TOP PRODUTOS QUE MAIS VOLTAM (com motivos, tamanhos, cores, defeitos e notas do operador):
 ${JSON.stringify(body.produtos, null, 2)}
 
+${body.notasRecentes && body.notasRecentes.length > 0
+  ? `NOTAS RECENTES (observações livres do operador — descrição qualitativa do que houve em cada devolução):
+${JSON.stringify(body.notasRecentes, null, 2)}
+
+Use essas notas para identificar PADRÕES e CAUSAS-RAIZ (ex.: vários "veio com mancha" no mesmo modelo → problema de embalagem/transporte; muitos "ficou pequeno" → grade de tamanho fora do padrão de mercado).`
+  : "SEM NOTAS QUALITATIVAS no recorte — baseie-se apenas nos agregados."}
+
 ${body.pergunta ? `PERGUNTA DO USUÁRIO: ${body.pergunta}` : "SEM PERGUNTA — entregue diagnóstico geral."}
+
 
 Responda APENAS no formato JSON abaixo, sem texto extra:
 {

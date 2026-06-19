@@ -58,8 +58,16 @@ export interface AiInsightPayload {
     tamanhos: Array<{ label: string; qtd: number }>;
     cores: Array<{ label: string; qtd: number }>;
     defeitos: Array<{ label: string; qtd: number }>;
+    notas?: string[];
+  }>;
+  notasRecentes?: Array<{
+    modelo: string;
+    motivo: string;
+    status: string;
+    nota: string;
   }>;
 }
+
 
 interface Props {
   payload: AiInsightPayload;

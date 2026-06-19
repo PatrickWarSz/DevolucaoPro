@@ -29,6 +29,7 @@ interface FormState {
   status: ReturnStatus;
   valorPedido: number; // valor total da devolução (único, não por item)
   valorPerda: number;  // valor REAL da perda quando status = loss (pode ser < valorPedido)
+  notas: string;       // observações livres — usadas pela IA do dashboard pra contexto qualitativo
   itens: ItemForm[];
 }
 
@@ -60,8 +61,10 @@ const empty = (): FormState => ({
   status: "resolved",
   valorPedido: 0,
   valorPerda: 0,
+  notas: "",
   itens: [emptyItem()],
 });
+
 
 
 const statusOptions: { value: ReturnStatus; label: string; Icon: typeof CheckCircle2; cls: string }[] = [
@@ -241,7 +244,9 @@ export default function Registrar() {
       pedidoId: p.pedidoId,
       devolucaoId: p.devolucaoId ?? "",
       motivoId: p.motivoId ?? f.motivoId,
+      notas: p.notas ?? f.notas,
       valorPedido: totalPedido,
+
       itens: p.itens.map((it) => ({
         id: localUid(),
         modeloId: it.modeloId,
@@ -337,6 +342,8 @@ export default function Registrar() {
         form.status === "resolved" ? totalCalc
         : form.status === "loss"    ? perda
         : undefined,
+      notas: form.notas.trim() || undefined,
+
       // Distribui o valor total uniformemente entre os itens — assim a soma
       // bate com o total do pedido e nenhum item fica "zerado" no display.
       itens: form.itens.map((it) => ({
@@ -704,7 +711,23 @@ export default function Registrar() {
                 />
               </Field>
             </div>
+
+            <div className="md:col-span-2">
+              <Field
+                label="Notas / observações"
+                hint="opcional · vira contexto qualitativo para a IA do dashboard (ex.: 'cliente disse que veio com mancha', 'tamanho menor que o padrão')"
+              >
+                <textarea
+                  value={form.notas}
+                  onChange={(e) => set("notas", e.target.value)}
+                  placeholder="Ex: cliente reclamou de costura solta na lateral; segundo defeito do mesmo modelo na semana"
+                  rows={2}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                />
+              </Field>
+            </div>
           </div>
+
 
           {/* Status — definido antes dos itens para destravar regras (ID obrigatório, etc.) */}
           <div className="border-t border-border bg-surface-muted/20 px-5 py-4">

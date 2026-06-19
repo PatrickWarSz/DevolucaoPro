@@ -205,6 +205,7 @@ export default function Dashboard() {
       cores: Map<string, number>;
       defeitos: Map<string, number>;
       componentes: Map<string, number>;
+      notas: string[];
     };
     const map = new Map<string, Acc>();
     const bump = (m: Map<string, number>, k: string, n: number) => {
@@ -214,6 +215,7 @@ export default function Dashboard() {
     filtradas.forEach((d) => {
       const motivoNome = lookup(motivos, d.motivoId);
       const defeitoNome = d.tipoDefeitoId ? lookup(tiposDefeito, d.tipoDefeitoId) : "";
+      const notaTrim = (d.notas ?? "").trim();
       d.itens.forEach((it) => {
         const modelo = lookup(modelos, it.modeloId);
         const cur =
@@ -227,6 +229,7 @@ export default function Dashboard() {
             cores: new Map(),
             defeitos: new Map(),
             componentes: new Map(),
+            notas: [],
           } as Acc);
         cur.qtdTotal += it.quantidade;
         cur.devolucoes.add(d.id);
@@ -235,6 +238,7 @@ export default function Dashboard() {
         bump(cur.cores, it.cor, it.quantidade);
         bump(cur.componentes, lookup(pecas, it.pecaId), it.quantidade);
         if (defeitoNome) bump(cur.defeitos, defeitoNome, it.quantidade);
+        if (notaTrim && !cur.notas.includes(notaTrim)) cur.notas.push(notaTrim);
         map.set(modelo, cur);
       });
     });
@@ -252,10 +256,12 @@ export default function Dashboard() {
         cores: toBreakdown(acc.cores),
         defeitos: toBreakdown(acc.defeitos),
         componentes: toBreakdown(acc.componentes),
+        notas: acc.notas,
       }))
       .sort((a, b) => b.qtdTotal - a.qtdTotal)
       .slice(0, topN);
   }, [filtradas, modelos, motivos, tiposDefeito, pecas, topN]);
+
 
   const totalPaginas = Math.max(1, Math.ceil(filtradas.length / PAGE));
   const ordenadas = useMemo(
@@ -298,8 +304,22 @@ export default function Dashboard() {
       tamanhos: p.tamanhos.slice(0, 5),
       cores: p.cores.slice(0, 5),
       defeitos: p.defeitos.slice(0, 5),
+      notas: p.notas.slice(0, 8),
     })),
-  }), [stats, evolucaoMensal, porEmpresa, porMotivo, produtosAnalise, fCompetencia, fEmpresa, fPlataforma, fStatus, fMotivo, empresas, plataformas, motivos]);
+    // Notas recentes do recorte — contexto qualitativo que a IA cruza com os agregados.
+    // Limitamos a 25 itens (mais recentes) e 240 chars cada, pra evitar payload gigante.
+    notasRecentes: filtradas
+      .filter((d) => (d.notas ?? "").trim().length > 0)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 25)
+      .map((d) => ({
+        modelo: d.itens[0] ? lookup(modelos, d.itens[0].modeloId) : "—",
+        motivo: lookup(motivos, d.motivoId),
+        status: statusLabel[d.status],
+        nota: (d.notas ?? "").trim().slice(0, 240),
+      })),
+  }), [stats, evolucaoMensal, porEmpresa, porMotivo, produtosAnalise, filtradas, fCompetencia, fEmpresa, fPlataforma, fStatus, fMotivo, empresas, plataformas, motivos, modelos]);
+
 
   const exportar = () => {
     // Exporta uma linha por ITEM, com dados do header repetidos para análise no Excel
@@ -880,7 +900,9 @@ type ProdutoAnalise = {
   cores: Breakdown[];
   defeitos: Breakdown[];
   componentes: Breakdown[];
+  notas: string[];
 };
+
 
 function ProdutoAnaliseRow({
   rank,
