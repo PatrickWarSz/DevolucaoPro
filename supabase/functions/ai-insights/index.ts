@@ -24,6 +24,14 @@ interface ProdutoResumo {
   tamanhos: Breakdown[];
   cores: Breakdown[];
   defeitos: Breakdown[];
+  notas?: string[];
+}
+
+interface NotaRecente {
+  modelo: string;
+  motivo: string;
+  status: string;
+  nota: string;
 }
 
 interface InsightInput {
@@ -47,8 +55,10 @@ interface InsightInput {
   porEmpresa: Array<{ name: string; value: number }>;
   porMotivo: Array<{ name: string; value: number }>;
   produtos: ProdutoResumo[];
+  notasRecentes?: NotaRecente[];
   pergunta?: string;
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
