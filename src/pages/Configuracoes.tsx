@@ -85,6 +85,9 @@ export default function Configuracoes() {
             <MotivosPanel />
           </div>
         </TabsContent>
+        <TabsContent value="assinatura">
+          <SubscriptionPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
