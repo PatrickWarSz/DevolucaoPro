@@ -6,6 +6,7 @@ import {
   BarChart3,
   Settings,
   Truck,
+  Users,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
