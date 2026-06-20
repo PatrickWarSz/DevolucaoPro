@@ -12,6 +12,7 @@ import Disputas from "./pages/Disputas.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
 import ACaminho from "./pages/ACaminho.tsx";
+import Funcionarios from "./pages/Funcionarios.tsx";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/disputas" element={<Disputas />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
+            <Route path="/funcionarios" element={<Funcionarios />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

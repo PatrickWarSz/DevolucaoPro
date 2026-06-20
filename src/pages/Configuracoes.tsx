@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import SubscriptionPanel from "@/components/settings/SubscriptionPanel";
 
 export default function Configuracoes() {
   const { toast } = useToast();
@@ -26,6 +27,7 @@ export default function Configuracoes() {
           <TabsTrigger value="plataformas">Plataformas</TabsTrigger>
           <TabsTrigger value="vinculos">Vínculos</TabsTrigger>
           <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
+          <TabsTrigger value="assinatura">Assinatura</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresas">
@@ -82,6 +84,9 @@ export default function Configuracoes() {
             />
             <MotivosPanel />
           </div>
+        </TabsContent>
+        <TabsContent value="assinatura">
+          <SubscriptionPanel />
         </TabsContent>
       </Tabs>
     </div>
