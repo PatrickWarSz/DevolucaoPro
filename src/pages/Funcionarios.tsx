@@ -152,7 +152,7 @@ export default function FuncionariosPage() {
       <PageHeader
         title="Funcionários"
         description="Cadastre acessos para sua equipe. Todo funcionário criado aqui também consegue usar o EstoquePro com o mesmo login."
-        right={
+        actions={
           <Button onClick={() => setOpenNew(true)} className="gap-2">
             <UserPlus className="h-4 w-4" /> Novo funcionário
           </Button>
