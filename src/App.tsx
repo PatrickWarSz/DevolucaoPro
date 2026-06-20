@@ -12,6 +12,7 @@ import Disputas from "./pages/Disputas.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
 import ACaminho from "./pages/ACaminho.tsx";
+import Funcionarios from "./pages/Funcionarios.tsx";
 
 const queryClient = new QueryClient();
 
