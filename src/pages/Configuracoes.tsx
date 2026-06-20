@@ -27,6 +27,7 @@ export default function Configuracoes() {
           <TabsTrigger value="plataformas">Plataformas</TabsTrigger>
           <TabsTrigger value="vinculos">Vínculos</TabsTrigger>
           <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
+          <TabsTrigger value="assinatura">Assinatura</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresas">
