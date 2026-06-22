@@ -608,15 +608,16 @@ export const selectVariantesDoModelo = (
   todosTamanhos: { nome: string }[],
   modeloVariantes: ModeloVariantes[]
 ): VariantesResolvidas => {
-  // Sempre mostra o catálogo COMPLETO de cores/tamanhos no select.
-  // O vínculo com o modelo é só informativo (não filtra) — o usuário precisa
-  // ter acesso a todas as opções, mesmo quando um modelo já tem cores cadastradas,
-  // pra não ficar travado em uma única opção quando precisa registrar variação nova.
+  // Filtra pelas variantes vinculadas ao modelo. Sem vínculo → mostra tudo (fallback).
+  // Para adicionar uma opção que não está na lista, use o botão "+" ao lado do select
+  // (Adicionar e vincular), que cadastra no catálogo e vincula ao modelo de uma vez.
   const mv = modeloId ? modeloVariantes.find((m) => m.modeloId === modeloId) : undefined;
+  const hasCores = !!mv && mv.cores.length > 0;
+  const hasTamanhos = !!mv && mv.tamanhos.length > 0;
   return {
-    cores: todasCores,
-    tamanhos: todosTamanhos,
-    hasVinculo: !!mv && (mv.cores.length > 0 || mv.tamanhos.length > 0),
+    cores: hasCores ? todasCores.filter((c) => mv!.cores.includes(c.nome)) : todasCores,
+    tamanhos: hasTamanhos ? todosTamanhos.filter((t) => mv!.tamanhos.includes(t.nome)) : todosTamanhos,
+    hasVinculo: hasCores || hasTamanhos,
   };
 };
 
