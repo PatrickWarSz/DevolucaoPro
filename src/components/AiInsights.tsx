@@ -86,7 +86,7 @@ export function AiInsights({ payload }: Props) {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("ai-insights", {
-        body: { payload, pergunta: perguntaTexto },
+        body: { ...payload, pergunta: perguntaTexto }, 
       });
       if (error || (data as { error?: string })?.error) {
         throw new Error(
