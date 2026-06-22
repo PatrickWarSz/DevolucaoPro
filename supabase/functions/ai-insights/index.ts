@@ -1,15 +1,11 @@
 // Edge Function: ai-insights
-// Recebe um resumo agregado do dashboard de Devoluções e devolve análise
-// estruturada feita por IA (Gemini via Lovable AI Gateway), no papel de
-// um gerente de operações + engenheiro de produção especialista em
-// e-commerce e devoluções.
+// Conexão DIRETA e NATIVA com o Google Gemini (Sem Lovable / Sem OpenAI layer)
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
 
 interface Breakdown {
   label: string;
@@ -35,13 +31,7 @@ interface NotaRecente {
 }
 
 interface InsightInput {
-  recorte: {
-    competencia?: string;
-    empresa?: string;
-    plataforma?: string;
-    status?: string;
-    motivo?: string;
-  };
+  recorte: any;
   totais: {
     totalDevolucoes: number;
     totalItens: number;
@@ -51,22 +41,21 @@ interface InsightInput {
     valorEmDisputa: number;
     taxaRecuperacao: number;
   };
-  evolucaoMensal: Array<{ mes: string; resolvidas: number; disputas: number; perdas: number }>;
-  porEmpresa: Array<{ name: string; value: number }>;
-  porMotivo: Array<{ name: string; value: number }>;
+  evolucaoMensal: any;
+  porEmpresa: any;
+  porMotivo: any;
   produtos: ProdutoResumo[];
   notasRecentes?: NotaRecente[];
   pergunta?: string;
 }
 
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("GEMINI_API_KEY"); // <-- Aqui mudou
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "GEMINI_API_KEY ausente" }), { // <-- Aqui também
+      return new Response(JSON.stringify({ error: "GEMINI_API_KEY ausente" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -90,114 +79,82 @@ Deno.serve(async (req) => {
           acoes: [],
           resposta: null,
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const system = `Você é um gerente de operações sênior e engenheiro de produção
-especialista em e-commerce, logística reversa e devoluções no Brasil. Sua missão é
-analisar os dados que o lojista te entrega e devolver INSIGHTS ACIONÁVEIS — coisas
-que ele NÃO está vendo no dashboard sozinho.
-
+    const system = `Você é um gerente de operações sênior e engenheiro de produção especialista em e-commerce, logística reversa e devoluções no Brasil.
 Regras:
-- Fale direto, em português do Brasil, tom executivo. Sem floreios.
+- Fale direto, em português do Brasil, tom executivo.
 - Use números do payload (R$, %, quantidades) para dar peso aos pontos.
-- Aponte concentrações suspeitas (um modelo, tamanho, cor ou defeito que domina).
-- Aponte risco financeiro real (disputas em aberto, perdas confirmadas, tendência).
-- Quando o usuário fizer uma PERGUNTA, responda no campo "resposta" com foco,
-  cruzando com os dados. Se não houver pergunta, deixe "resposta" como null.
+- Aponte concentrações suspeitas (modelo, tamanho, cor ou defeito).
+- Aponte risco financeiro real (disputas em aberto, perdas confirmadas).
+- Quando o usuário fizer uma PERGUNTA, responda no campo "resposta" cruzando com os dados. Se não houver, deixe "null".
 - Cada item de alerta/oportunidade/ação deve ser UMA frase curta e específica.
-- NÃO invente dados que não estão no payload.
-- Quando houver NOTAS qualitativas (observações livres do operador, ex.: "veio com mancha",
-  "tamanho menor que o padrão", "cliente disse que rasgou na primeira lavagem"), use-as
-  para enriquecer o diagnóstico — elas costumam revelar a CAUSA RAIZ que os agregados
-  numéricos não mostram. Cite padrões recorrentes nas notas (palavras/temas que se repetem).`;
+- NÃO invente dados.
+- Responda estritamente no formato JSON fornecido.`;
 
-    const user = `Analise estes dados de devoluções e me entregue insights como se você
-fosse o gerente da operação. Foque no que eu provavelmente NÃO vejo só olhando o
-dashboard.
+    const user = `Analise estes dados de devoluções e me entregue insights:
+RECORTE: ${JSON.stringify(body.recorte)}
+INDICADORES: ${JSON.stringify(body.totais)}
+EVOLUÇÃO: ${JSON.stringify(body.evolucaoMensal)}
+EMPRESAS: ${JSON.stringify(body.porEmpresa)}
+MOTIVOS: ${JSON.stringify(body.porMotivo)}
+PRODUTOS: ${JSON.stringify(body.produtos)}
+NOTAS: ${JSON.stringify(body.notasRecentes || [])}
+PERGUNTA: ${body.pergunta || "Nenhuma"}
 
-RECORTE ATUAL: ${JSON.stringify(body.recorte)}
-
-INDICADORES:
-${JSON.stringify(body.totais, null, 2)}
-
-EVOLUÇÃO MENSAL (R$ por status):
-${JSON.stringify(body.evolucaoMensal, null, 2)}
-
-VOLUME POR EMPRESA:
-${JSON.stringify(body.porEmpresa, null, 2)}
-
-PRINCIPAIS MOTIVOS (por itens):
-${JSON.stringify(body.porMotivo, null, 2)}
-
-TOP PRODUTOS QUE MAIS VOLTAM (com motivos, tamanhos, cores, defeitos e notas do operador):
-${JSON.stringify(body.produtos, null, 2)}
-
-${body.notasRecentes && body.notasRecentes.length > 0
-  ? `NOTAS RECENTES (observações livres do operador — descrição qualitativa do que houve em cada devolução):
-${JSON.stringify(body.notasRecentes, null, 2)}
-
-Use essas notas para identificar PADRÕES e CAUSAS-RAIZ (ex.: vários "veio com mancha" no mesmo modelo → problema de embalagem/transporte; muitos "ficou pequeno" → grade de tamanho fora do padrão de mercado).`
-  : "SEM NOTAS QUALITATIVAS no recorte — baseie-se apenas nos agregados."}
-
-${body.pergunta ? `PERGUNTA DO USUÁRIO: ${body.pergunta}` : "SEM PERGUNTA — entregue diagnóstico geral."}
-
-
-Responda APENAS no formato JSON abaixo, sem texto extra:
+Responda APENAS no formato JSON abaixo:
 {
-  "resumo": "1-2 frases com o diagnóstico geral da operação no recorte.",
-  "alertas": ["até 4 frases curtas sobre riscos / pontos críticos / coisas que vão piorar"],
-  "oportunidades": ["até 4 frases curtas sobre o que dá pra recuperar / economizar / negociar"],
-  "acoes": ["até 5 ações concretas e priorizadas para tomar nos próximos 7-30 dias"],
-  "resposta": ${body.pergunta ? '"resposta direta à pergunta, cruzando com os dados"' : "null"}
+  "resumo": "1-2 frases com o diagnóstico geral.",
+  "alertas": ["até 4 frases curtas sobre riscos"],
+  "oportunidades": ["até 4 frases curtas de melhorias"],
+  "acoes": ["até 5 ações concretas e priorizadas"],
+  "resposta": ${body.pergunta ? '"resposta direta à pergunta"' : "null"}
 }`;
 
-    // URL nova batendo direto no servidor do Google
-    const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    // URL oficial e nativa do Gemini (Passando a chave de API direto na URL)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+    const aiRes = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
       },
+      // Corpo da requisição no formato NATIVO do Google
       body: JSON.stringify({
-        model: "gemini-2.0-flash", // Nome direto do modelo da Google
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
+        system_instruction: {
+          parts: [{ text: system }]
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: user }]
+          }
         ],
-        response_format: { type: "json_object" },
+        generationConfig: {
+          responseMimeType: "application/json",
+        }
       }),
     });
 
     if (!aiRes.ok) {
       const errText = await aiRes.text();
-      if (aiRes.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em alguns segundos." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      if (aiRes.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos no workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      return new Response(JSON.stringify({ error: "Falha na IA", detail: errText }), {
+      return new Response(JSON.stringify({ error: "Falha no Gemini Nativo", detail: errText }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const data = await aiRes.json();
-    const content: string = data?.choices?.[0]?.message?.content ?? "{}";
+    
+    // Capturando a resposta do JSON nativo do Google
+    const content = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
 
     let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(content);
     } catch {
-      // fallback: devolve como resumo cru
       parsed = { resumo: content, alertas: [], oportunidades: [], acoes: [], resposta: null };
     }
 
