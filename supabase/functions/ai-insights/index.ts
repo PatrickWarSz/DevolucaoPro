@@ -153,14 +153,15 @@ Responda APENAS no formato JSON abaixo, sem texto extra:
   "resposta": ${body.pergunta ? '"resposta direta à pergunta, cruzando com os dados"' : "null"}
 }`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // URL nova batendo direto no servidor do Google
+    const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gemini-2.0-flash", // Nome direto do modelo da Google
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
