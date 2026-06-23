@@ -1,5 +1,5 @@
 // Edge Function: ai-insights
-// Conexão DIRETA e NATIVA com o Google Gemini (Sem Lovable / Sem OpenAI layer)
+// Conexão DIRETA e NATIVA com o Google Gemini (Versão atualizada 3.5-flash)
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,10 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-interface Breakdown {
-  label: string;
-  qtd: number;
-}
+interface Breakdown { label: string; qtd: number; }
 
 interface ProdutoResumo {
   modelo: string;
@@ -23,12 +20,7 @@ interface ProdutoResumo {
   notas?: string[];
 }
 
-interface NotaRecente {
-  modelo: string;
-  motivo: string;
-  status: string;
-  nota: string;
-}
+interface NotaRecente { modelo: string; motivo: string; status: string; nota: string; }
 
 interface InsightInput {
   recorte: any;
@@ -113,28 +105,18 @@ Responda APENAS no formato JSON abaixo:
   "resposta": ${body.pergunta ? '"resposta direta à pergunta"' : "null"}
 }`;
 
-    // URL oficial e nativa do Gemini (Passando a chave de API direto na URL)
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // Nova URL nativa do Google com o modelo gemini-3.5-flash
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
 
     const aiRes = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      // Corpo da requisição no formato NATIVO do Google
       body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: system }]
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: user }]
-          }
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-        }
+        system_instruction: { parts: [{ text: system }] },
+        contents: [ { role: "user", parts: [{ text: user }] } ],
+        generationConfig: { responseMimeType: "application/json" }
       }),
     });
 
@@ -147,8 +129,6 @@ Responda APENAS no formato JSON abaixo:
     }
 
     const data = await aiRes.json();
-    
-    // Capturando a resposta do JSON nativo do Google
     const content = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
 
     let parsed: Record<string, unknown>;
