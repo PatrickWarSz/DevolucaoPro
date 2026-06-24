@@ -682,7 +682,7 @@ export default function Registrar() {
                 <p className="text-[11px] text-destructive mt-1 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3 shrink-0" />
                   Informe o ID do pedido para registrar uma devolução em{" "}
-                  {form.status === "dispute" ? "disputa" : "perda"}.
+                  {form.status === "dispute" ? "disputa" : form.status === "pending" ? "aguardando valor" : "perda"}.
                 </p>
               )}
             </Field>
