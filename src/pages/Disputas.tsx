@@ -63,7 +63,7 @@ export default function Disputas() {
   const disputas = useMemo(
     () =>
       devolucoes
-        .filter((d) => d.status === "dispute")
+        .filter((d) => d.status === "dispute" || d.status === "pending")
         .map((d) => ({ d, prazo: avaliarPrazo(d, plataformas) }))
         .sort((a, b) => {
           const so = prazoStatusOrder[a.prazo.status] - prazoStatusOrder[b.prazo.status];
