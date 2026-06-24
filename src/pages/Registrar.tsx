@@ -176,7 +176,7 @@ export default function Registrar() {
     }));
 
   // Pedido obrigatório apenas em disputa/perda (precisa rastrear)
-  const pedidoObrigatorio = form.status === "dispute" || form.status === "loss";
+  const pedidoObrigatorio = form.status === "dispute" || form.status === "loss" || form.status === "pending";
 
   // Detecta se o motivo selecionado é "defeito" (case-insensitive, match parcial)
   const motivoSelecionado = motivos.find((m) => m.id === form.motivoId);
