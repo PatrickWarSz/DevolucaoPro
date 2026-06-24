@@ -197,7 +197,7 @@ export default function Registrar() {
   if (!form.empresaId) camposFaltando.push("Empresa");
   if (!form.plataformaId) camposFaltando.push("Plataforma");
   if (!form.motivoId) camposFaltando.push("Motivo");
-  if (pedidoFaltando) camposFaltando.push("ID do Pedido (obrigatório em disputa/perda)");
+  if (pedidoFaltando) camposFaltando.push("ID do Pedido (obrigatório em disputa/perda/aguardando)");
   if (form.itens.length === 0 || itensValidos.length !== form.itens.length) {
     camposFaltando.push("Modelo e quantidade em todos os itens");
   }
