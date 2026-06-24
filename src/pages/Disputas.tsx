@@ -135,8 +135,8 @@ export default function Disputas() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Disputas em aberto"
-        description="Casos pendentes ordenados por prazo. Resolva ou confirme perda quando a plataforma der o resultado."
+        title="Disputas e pendências"
+        description="Disputas abertas + devoluções aguardando o valor final da plataforma. Marque Ganhei ou Perdi quando a resolução chegar."
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
