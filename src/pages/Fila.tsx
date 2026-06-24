@@ -245,7 +245,7 @@ export default function Fila() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {(["resolved", "dispute", "loss"] as ReturnStatus[]).map((s) => (
+                              {(["resolved", "dispute", "loss", "pending"] as ReturnStatus[]).map((s) => (
                                 <DropdownMenuItem
                                   key={s}
                                   disabled={s === d.status}
