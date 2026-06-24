@@ -86,6 +86,12 @@ const statusOptions: { value: ReturnStatus; label: string; Icon: typeof CheckCir
     Icon: XCircle,
     cls: "data-[active=true]:bg-destructive-soft data-[active=true]:border-destructive/40 data-[active=true]:text-destructive-soft-foreground",
   },
+  {
+    value: "pending",
+    label: "Aguardando valor",
+    Icon: Clock,
+    cls: "data-[active=true]:bg-muted data-[active=true]:border-border data-[active=true]:text-foreground",
+  },
 ];
 
 export default function Registrar() {
