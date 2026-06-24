@@ -405,6 +405,7 @@ export default function Dashboard() {
           <SelectItem value="resolved">Resolvidas</SelectItem>
           <SelectItem value="dispute">Em disputa</SelectItem>
           <SelectItem value="loss">Perdas</SelectItem>
+          <SelectItem value="pending">Aguardando valor</SelectItem>
         </FilterSelect>
         <FilterSelect label="Motivo" value={fMotivo} onChange={setFMotivo}>
           <SelectItem value={ALL}>Todos motivos</SelectItem>
