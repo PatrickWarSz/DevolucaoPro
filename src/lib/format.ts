@@ -87,6 +87,9 @@ export const motivoGeraPerda = (motivos: Motivo[], motivoId: string) => {
  */
 export const valorEfetivo = (d: Devolucao, motivos?: Motivo[]) => {
   if (d.status === "dispute") return 1;
+  // pending = aguardando a plataforma informar o valor da perda. Não entra
+  // em "recuperado" nem em "perda" enquanto não for resolvido para loss/resolved.
+  if (d.status === "pending") return 0;
   const total = valorTotal(d);
   // Em perda, o usuário pode informar um valor real de perda menor que o total
   // do pedido (ex.: reembolso parcial). Guardamos esse valor em `valorRecuperado`
