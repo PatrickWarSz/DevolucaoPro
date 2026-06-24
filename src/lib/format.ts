@@ -46,6 +46,7 @@ export const statusLabel: Record<Devolucao["status"], string> = {
   resolved: "Resolvida",
   dispute: "Em disputa",
   loss: "Perda confirmada",
+  pending: "Aguardando valor",
 };
 
 // ============= Helpers de itens =============
