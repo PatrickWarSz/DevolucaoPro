@@ -1,6 +1,6 @@
 export type ID = string;
 
-export type ReturnStatus = "resolved" | "dispute" | "loss";
+export type ReturnStatus = "resolved" | "dispute" | "loss" | "pending";
 
 export interface Empresa {
   id: ID;
