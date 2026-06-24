@@ -25,7 +25,7 @@ export function AppSidebar() {
   const devolucoes = useStore((s) => s.devolucoes);
   const pedidosACaminho = useStore((s) => s.pedidosACaminho);
   const disputaCount = useMemo(
-    () => devolucoes.filter((d) => d.status === "dispute").length,
+    () => devolucoes.filter((d) => d.status === "dispute" || d.status === "pending").length,
     [devolucoes],
   );
   const aCaminhoCount = pedidosACaminho.length;
