@@ -924,7 +924,7 @@ export default function Registrar() {
                                 : "text-foreground",
                           )}
                         >
-                          {d.status === "dispute" ? "R$ 1,00" : fmtBRL(total)}
+                          {d.status === "dispute" ? "R$ 1,00" : d.status === "pending" ? "—" : fmtBRL(total)}
                         </span>
                         <button
                           onClick={() => deleteDevolucao(d.id)}
