@@ -10,7 +10,7 @@ import { useStore, lookup } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import type { ReturnStatus, DevolucaoItem, PedidoACaminho } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, AlertCircle, XCircle, Trash2, Sparkles, Plus, Package, Truck, X } from "lucide-react";
+import { CheckCircle2, AlertCircle, XCircle, Clock, Trash2, Sparkles, Plus, Package, Truck, X } from "lucide-react";
 import { fmtBRL, fmtDateTime, isToday, statusLabel, valorTotal, quantidadeTotal, motivoGeraPerda } from "@/lib/format";
 import { advanceOnEnter } from "@/lib/focus";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -85,6 +85,12 @@ const statusOptions: { value: ReturnStatus; label: string; Icon: typeof CheckCir
     label: "Perda confirmada",
     Icon: XCircle,
     cls: "data-[active=true]:bg-destructive-soft data-[active=true]:border-destructive/40 data-[active=true]:text-destructive-soft-foreground",
+  },
+  {
+    value: "pending",
+    label: "Aguardando valor",
+    Icon: Clock,
+    cls: "data-[active=true]:bg-muted data-[active=true]:border-border data-[active=true]:text-foreground",
   },
 ];
 
@@ -170,7 +176,7 @@ export default function Registrar() {
     }));
 
   // Pedido obrigatório apenas em disputa/perda (precisa rastrear)
-  const pedidoObrigatorio = form.status === "dispute" || form.status === "loss";
+  const pedidoObrigatorio = form.status === "dispute" || form.status === "loss" || form.status === "pending";
 
   // Detecta se o motivo selecionado é "defeito" (case-insensitive, match parcial)
   const motivoSelecionado = motivos.find((m) => m.id === form.motivoId);
@@ -191,7 +197,7 @@ export default function Registrar() {
   if (!form.empresaId) camposFaltando.push("Empresa");
   if (!form.plataformaId) camposFaltando.push("Plataforma");
   if (!form.motivoId) camposFaltando.push("Motivo");
-  if (pedidoFaltando) camposFaltando.push("ID do Pedido (obrigatório em disputa/perda)");
+  if (pedidoFaltando) camposFaltando.push("ID do Pedido (obrigatório em disputa/perda/aguardando)");
   if (form.itens.length === 0 || itensValidos.length !== form.itens.length) {
     camposFaltando.push("Modelo e quantidade em todos os itens");
   }
@@ -676,7 +682,7 @@ export default function Registrar() {
                 <p className="text-[11px] text-destructive mt-1 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3 shrink-0" />
                   Informe o ID do pedido para registrar uma devolução em{" "}
-                  {form.status === "dispute" ? "disputa" : "perda"}.
+                  {form.status === "dispute" ? "disputa" : form.status === "pending" ? "aguardando valor" : "perda"}.
                 </p>
               )}
             </Field>
@@ -734,7 +740,7 @@ export default function Registrar() {
             <Label className="text-xs font-medium text-muted-foreground">
               Status da devolução
             </Label>
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {statusOptions.map((opt) => {
                 const active = form.status === opt.value;
                 const Icon = opt.Icon;
@@ -918,7 +924,7 @@ export default function Registrar() {
                                 : "text-foreground",
                           )}
                         >
-                          {d.status === "dispute" ? "R$ 1,00" : fmtBRL(total)}
+                          {d.status === "dispute" ? "R$ 1,00" : d.status === "pending" ? "—" : fmtBRL(total)}
                         </span>
                         <button
                           onClick={() => deleteDevolucao(d.id)}

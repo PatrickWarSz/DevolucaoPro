@@ -405,6 +405,7 @@ export default function Dashboard() {
           <SelectItem value="resolved">Resolvidas</SelectItem>
           <SelectItem value="dispute">Em disputa</SelectItem>
           <SelectItem value="loss">Perdas</SelectItem>
+          <SelectItem value="pending">Aguardando valor</SelectItem>
         </FilterSelect>
         <FilterSelect label="Motivo" value={fMotivo} onChange={setFMotivo}>
           <SelectItem value={ALL}>Todos motivos</SelectItem>
@@ -642,7 +643,7 @@ export default function Dashboard() {
                     <TableCell className="text-xs text-muted-foreground">{lookup(motivos, d.motivoId)}</TableCell>
                     <TableCell className="text-right tabular text-sm">{quantidadeTotal(d)}</TableCell>
                     <TableCell className="text-right tabular text-sm font-medium">
-                      {d.status === "dispute" ? "R$ 1,00" : fmtBRL(valorEfetivo(d, motivos))}
+                      {d.status === "dispute" ? "R$ 1,00" : d.status === "pending" ? "—" : fmtBRL(valorEfetivo(d, motivos))}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={d.status} />

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { ReturnStatus } from "@/lib/types";
-import { CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, XCircle, Clock } from "lucide-react";
 
 const config: Record<
   ReturnStatus,
@@ -20,6 +20,11 @@ const config: Record<
     label: "Perda",
     cls: "bg-destructive-soft text-destructive-soft-foreground border-destructive/20",
     Icon: XCircle,
+  },
+  pending: {
+    label: "Aguardando valor",
+    cls: "bg-muted text-muted-foreground border-border",
+    Icon: Clock,
   },
 };
 

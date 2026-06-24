@@ -227,8 +227,8 @@ export default function Fila() {
                         </TableCell>
                         <TableCell className="text-right tabular text-sm">{qtd}</TableCell>
                         <TableCell className="text-right tabular text-sm font-medium">
-                          {d.status === "dispute" ? "R$ 1,00" : fmtBRL(valorEfetivo(d))}
-                          {d.status !== "dispute" && total !== valorEfetivo(d) && (
+                          {d.status === "dispute" ? "R$ 1,00" : d.status === "pending" ? "—" : fmtBRL(valorEfetivo(d))}
+                          {d.status !== "dispute" && d.status !== "pending" && total !== valorEfetivo(d) && (
                             <div className="text-[10px] text-muted-foreground">
                               bruto {fmtBRL(total)}
                             </div>
@@ -245,7 +245,7 @@ export default function Fila() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {(["resolved", "dispute", "loss"] as ReturnStatus[]).map((s) => (
+                              {(["resolved", "dispute", "loss", "pending"] as ReturnStatus[]).map((s) => (
                                 <DropdownMenuItem
                                   key={s}
                                   disabled={s === d.status}
