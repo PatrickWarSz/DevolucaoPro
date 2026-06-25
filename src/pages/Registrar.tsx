@@ -816,7 +816,8 @@ export default function Registrar() {
                 pecas={pecas}
                 cores={cores}
                 tamanhos={tamanhos}
-                showPeca={isDefeito}
+                showPeca={true}
+                pecaRequired={isDefeito}
                 onChange={(patch) => updateItem(it.id, patch)}
                 onRemove={() => removeItem(it.id)}
                 canRemove={form.itens.length > 1}
@@ -956,6 +957,7 @@ function ItemRow({
   cores,
   tamanhos,
   showPeca,
+  pecaRequired,
   onChange,
   onRemove,
   canRemove,
@@ -964,9 +966,10 @@ function ItemRow({
   item: ItemForm;
   modelos: { id: string; nome: string }[];
   pecas: { id: string; nome: string }[];
-  cores: { id: string; nome: string }[];
-  tamanhos: { id: string; nome: string }[];
+  cores: string[];
+  tamanhos: string[];
   showPeca: boolean;
+  pecaRequired: boolean;
   onChange: (patch: Partial<ItemForm>) => void;
   onRemove: () => void;
   canRemove: boolean;
