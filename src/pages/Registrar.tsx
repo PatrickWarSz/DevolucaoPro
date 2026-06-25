@@ -1004,7 +1004,12 @@ function ItemRow({
         </div>
         {showPeca && (
           <div className="md:col-span-3">
-            <Field label="Componente afetado" compact hint="parte que veio com problema">
+            <Field
+              label="Componente afetado"
+              compact
+              required={pecaRequired}
+              hint={pecaRequired ? "obrigatório p/ defeito" : "ex.: top, legging (opcional)"}
+            >
               <QuickSelect
                 value={item.pecaId}
                 onValueChange={(v) => onChange({ pecaId: v })}
