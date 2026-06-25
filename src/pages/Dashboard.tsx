@@ -304,6 +304,7 @@ export default function Dashboard() {
       tamanhos: p.tamanhos.slice(0, 5),
       cores: p.cores.slice(0, 5),
       defeitos: p.defeitos.slice(0, 5),
+      componentes: p.componentes.slice(0, 5),
       notas: p.notas.slice(0, 8),
     })),
     // Notas recentes do recorte — contexto qualitativo que a IA cruza com os agregados.
@@ -971,8 +972,13 @@ function ProdutoAnaliseRow({
           />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="grid gap-3 px-2 py-3 sm:grid-cols-2 lg:grid-cols-4 border-t border-dashed border-border mt-1">
+          <div className="grid gap-3 px-2 py-3 sm:grid-cols-2 lg:grid-cols-5 border-t border-dashed border-border mt-1">
             <BreakdownList title="Motivos" rows={produto.motivos} />
+            <BreakdownList
+              title="Peça do conjunto"
+              rows={produto.componentes}
+              empty="Sem componente informado"
+            />
             <BreakdownList title="Tamanhos" rows={produto.tamanhos} empty="Sem tamanho informado" />
             <BreakdownList title="Cores" rows={produto.cores} empty="Sem cor informada" />
             <BreakdownList

@@ -17,6 +17,7 @@ interface ProdutoResumo {
   tamanhos: Breakdown[];
   cores: Breakdown[];
   defeitos: Breakdown[];
+  componentes?: Breakdown[];
   notas?: string[];
 }
 
