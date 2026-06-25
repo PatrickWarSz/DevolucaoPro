@@ -966,8 +966,8 @@ function ItemRow({
   item: ItemForm;
   modelos: { id: string; nome: string }[];
   pecas: { id: string; nome: string }[];
-  cores: string[];
-  tamanhos: string[];
+  cores: { id?: string; nome: string }[] | string[];
+  tamanhos: { id?: string; nome: string }[] | string[];
   showPeca: boolean;
   pecaRequired: boolean;
   onChange: (patch: Partial<ItemForm>) => void;
