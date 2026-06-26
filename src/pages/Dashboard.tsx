@@ -295,7 +295,7 @@ export default function Dashboard() {
     evolucaoMensal: evolucaoMensal.map((m) => ({
       mes: m.mes,
       resolvidas: Math.round(m.resolvidas),
-      disputas: Math.round(m.disputas),
+      disputasQtd: m.disputasQtd,
       perdas: Math.round(m.perdas),
     })),
     porEmpresa,
