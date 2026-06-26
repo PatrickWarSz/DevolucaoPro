@@ -71,8 +71,10 @@ export default function ACaminho() {
   const tamanhos = useStore((s) => s.tamanhos);
   const motivos = useStore((s) => s.motivos);
   const pedidosACaminho = useStore((s) => s.pedidosACaminho);
+  const devolucoes = useStore((s) => s.devolucoes);
   const addPedidoACaminho = useStore((s) => s.addPedidoACaminho);
   const deletePedidoACaminho = useStore((s) => s.deletePedidoACaminho);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormState>(empty());
   const [busca, setBusca] = useState("");
