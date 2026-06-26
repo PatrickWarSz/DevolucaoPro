@@ -262,9 +262,18 @@ export default function ACaminho() {
           onSubmit={submit}
           className="rounded-lg border border-border bg-card shadow-xs h-fit"
         >
-          <div className="flex items-center gap-2 border-b border-border px-5 py-3">
-            <Truck className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Novo pedido a caminho</h2>
+          <div className="flex items-center justify-between gap-2 border-b border-border px-5 py-3">
+            <div className="flex items-center gap-2">
+              <Truck className={cn("h-4 w-4", editingId ? "text-warning" : "text-primary")} />
+              <h2 className="text-sm font-medium">
+                {editingId ? "Editar pedido a caminho" : "Novo pedido a caminho"}
+              </h2>
+            </div>
+            {editingId && (
+              <Button type="button" variant="ghost" size="sm" onClick={cancelarEdicao} className="h-7">
+                Cancelar
+              </Button>
+            )}
           </div>
 
           <div className="grid gap-4 p-5">
