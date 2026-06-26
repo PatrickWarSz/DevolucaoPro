@@ -155,14 +155,14 @@ export default function Dashboard() {
   }, [filtradas, motivos]);
 
   const evolucaoMensal = useMemo(() => {
-    const map = new Map<string, { mes: string; resolvidas: number; disputas: number; perdas: number }>();
+    const map = new Map<string, { mes: string; resolvidas: number; perdas: number; disputasQtd: number }>();
     filtradas.forEach((d) => {
       const key = d.competencia;
-      const cur = map.get(key) ?? { mes: key, resolvidas: 0, disputas: 0, perdas: 0 };
+      const cur = map.get(key) ?? { mes: key, resolvidas: 0, perdas: 0, disputasQtd: 0 };
       const v = valorEfetivo(d, motivos);
       if (d.status === "resolved") cur.resolvidas += v;
-      else if (d.status === "dispute") cur.disputas += v;
-      else cur.perdas += v;
+      else if (d.status === "dispute") cur.disputasQtd += 1;
+      else if (d.status === "loss") cur.perdas += v;
       map.set(key, cur);
     });
     return Array.from(map.values())
