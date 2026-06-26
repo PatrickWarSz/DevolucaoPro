@@ -490,13 +490,26 @@ export default function ACaminho() {
                       </p>
                     </div>
                     <div className="flex flex-col items-end justify-between gap-2">
-                      <button
-                        onClick={() => deletePedidoACaminho(p.id)}
-                        className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                        aria-label="Remover"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => editarPedido(p)}
+                          className="text-muted-foreground hover:text-primary transition-colors p-1"
+                          aria-label="Editar"
+                          title="Editar"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deletePedidoACaminho(p.id)}
+                          className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                          aria-label="Remover"
+                          title="Remover"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                       <Button size="sm" variant="outline" onClick={() => irParaRegistrar(p)} className="h-7">
                         Receber
                         <ArrowRight className="h-3 w-3 ml-1" />
