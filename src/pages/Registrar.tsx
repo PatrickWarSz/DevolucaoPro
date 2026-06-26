@@ -486,7 +486,14 @@ export default function Registrar() {
                             className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between gap-3 border-b border-border last:border-0"
                           >
                             <div className="min-w-0">
-                              <div className="font-mono text-sm font-medium">{p.pedidoId}</div>
+                              <div className="font-mono text-sm font-medium">
+                                {p.pedidoId}
+                                {p.devolucaoId && (
+                                  <span className="ml-1.5 text-[11px] text-muted-foreground font-normal">
+                                    · {p.devolucaoId}
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-xs text-muted-foreground truncate">
                                 {lookup(empresas, p.empresaId)} · {lookup(plataformas, p.plataformaId)} ·{" "}
                                 {principal ? lookup(modelos, principal.modeloId) : "—"}
