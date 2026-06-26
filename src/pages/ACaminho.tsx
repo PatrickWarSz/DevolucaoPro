@@ -396,7 +396,7 @@ export default function ACaminho() {
           <div className="border-t border-border bg-surface-muted/40 px-5 py-3 flex justify-end">
             <Button ref={submitRef} type="submit" size="sm" disabled={!valid}>
               <Truck className="h-3.5 w-3.5 mr-1.5" />
-              Registrar pedido
+              {editingId ? "Salvar alterações" : "Registrar pedido"}
             </Button>
           </div>
         </form>
