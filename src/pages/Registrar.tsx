@@ -90,7 +90,7 @@ const statusOptions: { value: ReturnStatus; label: string; Icon: typeof CheckCir
     value: "pending",
     label: "Aguardando valor",
     Icon: Clock,
-    cls: "data-[active=true]:bg-muted data-[active=true]:border-border data-[active=true]:text-foreground",
+    cls: "data-[active=true]:bg-primary-soft data-[active=true]:border-primary/40 data-[active=true]:text-primary",
   },
 ];
 
