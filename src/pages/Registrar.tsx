@@ -213,7 +213,11 @@ export default function Registrar() {
     const q = pedidoBusca.trim().toLowerCase();
     if (!q) return [];
     return pedidosACaminho
-      .filter((p) => p.pedidoId.toLowerCase().includes(q))
+      .filter(
+        (p) =>
+          p.pedidoId.toLowerCase().includes(q) ||
+          (p.devolucaoId ?? "").toLowerCase().includes(q),
+      )
       .slice(0, 5);
   }, [pedidoBusca, pedidosACaminho]);
 
