@@ -138,19 +138,33 @@ export default function ACaminho() {
       });
       return;
     }
-    // Anti-duplicidade: não permite cadastrar o mesmo ID em "a caminho" duas vezes
+    // Anti-duplicidade contra a própria lista "a caminho"
     const pedidoNorm = form.pedidoId.trim().toLowerCase();
-    const dup = pedidosACaminho.find(
-      (p) => p.pedidoId.trim().toLowerCase() === pedidoNorm,
+    const dupCaminho = pedidosACaminho.find(
+      (p) => p.id !== editingId && p.pedidoId.trim().toLowerCase() === pedidoNorm,
     );
-    if (dup) {
+    if (dupCaminho) {
       toast({
         title: "Pedido já está a caminho",
-        description: `O ID "${form.pedidoId.trim()}" já foi pré-cadastrado. Use o botão "Receber" na lista.`,
+        description: `O ID "${form.pedidoId.trim()}" já foi pré-cadastrado. Use "Receber" ou "Editar" na lista.`,
         variant: "destructive",
       });
       return;
     }
+    // Anti-duplicidade contra devoluções já registradas — evita re-cadastro
+    const dupDev = devolucoes.find(
+      (d) => d.pedidoId.trim().toLowerCase() === pedidoNorm,
+    );
+    if (dupDev) {
+      toast({
+        title: "Pedido já registrado como devolução",
+        description: `"${form.pedidoId.trim()}" já consta na Fila/Disputas — não precisa re-cadastrar aqui.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    // Modo edição: deletar o antigo e re-inserir (mantém sync DB consistente)
+    if (editingId) deletePedidoACaminho(editingId);
     addPedidoACaminho({
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
@@ -158,7 +172,6 @@ export default function ACaminho() {
       devolucaoId: form.devolucaoId.trim() || undefined,
       motivoId: form.motivoId || undefined,
       notas: form.notas.trim() || undefined,
-      // Valor único: armazenamos no primeiro item para preservar o modelo
       itens: form.itens.map((it, idx) => ({
         id: it.id,
         modeloId: it.modeloId,
@@ -170,15 +183,49 @@ export default function ACaminho() {
       })),
     });
     toast({
-      title: "Pedido a caminho registrado",
+      title: editingId ? "Pedido atualizado" : "Pedido a caminho registrado",
       description: `${form.pedidoId.trim()} · ${form.itens.length} item(ns)`,
     });
+    setEditingId(null);
     setForm({
       ...empty(),
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
     });
     setTimeout(() => firstFieldRef.current?.focus(), 0);
+  };
+
+  const editarPedido = (p: PedidoACaminho) => {
+    const total = p.itens.reduce((s, it) => s + Number(it.valor || 0), 0);
+    setEditingId(p.id);
+    setForm({
+      empresaId: p.empresaId,
+      plataformaId: p.plataformaId,
+      pedidoId: p.pedidoId,
+      devolucaoId: p.devolucaoId ?? "",
+      motivoId: p.motivoId ?? "",
+      notas: p.notas ?? "",
+      valorPedido: total,
+      itens: p.itens.length > 0
+        ? p.itens.map((it) => ({
+            id: localUid(),
+            modeloId: it.modeloId,
+            pecaId: it.pecaId,
+            cor: it.cor,
+            tamanho: it.tamanho,
+            quantidade: it.quantidade,
+            valor: 0,
+          }))
+        : [emptyItem()],
+    });
+    // Rola para o formulário
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => pedidoIdRef.current?.focus(), 100);
+  };
+
+  const cancelarEdicao = () => {
+    setEditingId(null);
+    setForm(empty());
   };
 
   const lista = useMemo(() => {
