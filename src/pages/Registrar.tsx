@@ -470,7 +470,7 @@ export default function Registrar() {
                         aplicarPedido(sugestoes[0]);
                       }
                     }}
-                    placeholder="Ex: SHP-991023 (digite ao menos 1 caractere)"
+                    placeholder="Ex: SHP-991023 ou DEV-00823"
                     className="font-mono text-sm"
                     data-skip-focus
                   />
