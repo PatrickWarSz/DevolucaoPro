@@ -61,12 +61,16 @@ import {
 } from "recharts";
 
 const PIE_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--info))",
-  "hsl(var(--warning))",
-  "hsl(var(--destructive))",
-  "hsl(var(--muted-foreground))",
-  "hsl(220 30% 50%)",
+  "hsl(217 91% 55%)",   // azul
+  "hsl(28 92% 55%)",    // laranja
+  "hsl(160 70% 42%)",   // verde
+  "hsl(280 70% 58%)",   // roxo
+  "hsl(0 75% 58%)",     // vermelho
+  "hsl(48 95% 55%)",    // amarelo
+  "hsl(190 80% 45%)",   // ciano
+  "hsl(330 75% 58%)",   // rosa
+  "hsl(120 40% 45%)",   // verde escuro
+  "hsl(15 75% 50%)",    // terracota
 ];
 
 const ALL = "__all__";
@@ -151,14 +155,14 @@ export default function Dashboard() {
   }, [filtradas, motivos]);
 
   const evolucaoMensal = useMemo(() => {
-    const map = new Map<string, { mes: string; resolvidas: number; disputas: number; perdas: number }>();
+    const map = new Map<string, { mes: string; resolvidas: number; perdas: number; disputasQtd: number }>();
     filtradas.forEach((d) => {
       const key = d.competencia;
-      const cur = map.get(key) ?? { mes: key, resolvidas: 0, disputas: 0, perdas: 0 };
+      const cur = map.get(key) ?? { mes: key, resolvidas: 0, perdas: 0, disputasQtd: 0 };
       const v = valorEfetivo(d, motivos);
       if (d.status === "resolved") cur.resolvidas += v;
-      else if (d.status === "dispute") cur.disputas += v;
-      else cur.perdas += v;
+      else if (d.status === "dispute") cur.disputasQtd += 1;
+      else if (d.status === "loss") cur.perdas += v;
       map.set(key, cur);
     });
     return Array.from(map.values())
@@ -291,7 +295,7 @@ export default function Dashboard() {
     evolucaoMensal: evolucaoMensal.map((m) => ({
       mes: m.mes,
       resolvidas: Math.round(m.resolvidas),
-      disputas: Math.round(m.disputas),
+      disputasQtd: m.disputasQtd,
       perdas: Math.round(m.perdas),
     })),
     porEmpresa,
@@ -450,16 +454,25 @@ export default function Dashboard() {
       <AiInsights payload={aiPayload} />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard title="Evolução mensal" subtitle="Valor por status (últimos 6 meses)" className="lg:col-span-2">
+        <ChartCard title="Evolução mensal" subtitle="Resolvidas e Perdas em R$ · Disputas em quantidade (últimos 6 meses)" className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={evolucaoMensal} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis
+                yAxisId="left"
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => fmtBRLCompact(v as number)}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                allowDecimals={false}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                axisLine={false}
+                tickLine={false}
               />
               <Tooltip
                 contentStyle={{
@@ -468,12 +481,12 @@ export default function Dashboard() {
                   borderRadius: 6,
                   fontSize: 12,
                 }}
-                formatter={(v) => fmtBRL(v as number)}
+                formatter={(v, name) => (name === "Disputas (qtd)" ? `${v}` : fmtBRL(v as number))}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="resolvidas" name="Resolvidas" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="disputas" name="Disputas" fill="hsl(var(--warning))" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="perdas" name="Perdas" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
+              <Bar yAxisId="left" dataKey="resolvidas" name="Resolvidas (R$)" fill="hsl(217 91% 55%)" radius={[3, 3, 0, 0]} />
+              <Bar yAxisId="left" dataKey="perdas" name="Perdas (R$)" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
+              <Bar yAxisId="right" dataKey="disputasQtd" name="Disputas (qtd)" fill="hsl(28 92% 55%)" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
