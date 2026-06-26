@@ -61,12 +61,16 @@ import {
 } from "recharts";
 
 const PIE_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--info))",
-  "hsl(var(--warning))",
-  "hsl(var(--destructive))",
-  "hsl(var(--muted-foreground))",
-  "hsl(220 30% 50%)",
+  "hsl(217 91% 55%)",   // azul
+  "hsl(28 92% 55%)",    // laranja
+  "hsl(160 70% 42%)",   // verde
+  "hsl(280 70% 58%)",   // roxo
+  "hsl(0 75% 58%)",     // vermelho
+  "hsl(48 95% 55%)",    // amarelo
+  "hsl(190 80% 45%)",   // ciano
+  "hsl(330 75% 58%)",   // rosa
+  "hsl(120 40% 45%)",   // verde escuro
+  "hsl(15 75% 50%)",    // terracota
 ];
 
 const ALL = "__all__";
