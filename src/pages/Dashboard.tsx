@@ -454,16 +454,25 @@ export default function Dashboard() {
       <AiInsights payload={aiPayload} />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard title="Evolução mensal" subtitle="Valor por status (últimos 6 meses)" className="lg:col-span-2">
+        <ChartCard title="Evolução mensal" subtitle="Resolvidas e Perdas em R$ · Disputas em quantidade (últimos 6 meses)" className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={evolucaoMensal} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis
+                yAxisId="left"
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => fmtBRLCompact(v as number)}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                allowDecimals={false}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                axisLine={false}
+                tickLine={false}
               />
               <Tooltip
                 contentStyle={{
@@ -472,12 +481,12 @@ export default function Dashboard() {
                   borderRadius: 6,
                   fontSize: 12,
                 }}
-                formatter={(v) => fmtBRL(v as number)}
+                formatter={(v, name) => (name === "Disputas (qtd)" ? `${v}` : fmtBRL(v as number))}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="resolvidas" name="Resolvidas" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="disputas" name="Disputas" fill="hsl(var(--warning))" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="perdas" name="Perdas" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
+              <Bar yAxisId="left" dataKey="resolvidas" name="Resolvidas (R$)" fill="hsl(217 91% 55%)" radius={[3, 3, 0, 0]} />
+              <Bar yAxisId="left" dataKey="perdas" name="Perdas (R$)" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
+              <Bar yAxisId="right" dataKey="disputasQtd" name="Disputas (qtd)" fill="hsl(28 92% 55%)" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
