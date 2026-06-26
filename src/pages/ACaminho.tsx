@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Search,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import type { DevolucaoItem, PedidoACaminho } from "@/lib/types";
 import { useNavigate } from "react-router-dom";
