@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Search,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import type { DevolucaoItem, PedidoACaminho } from "@/lib/types";
 import { useNavigate } from "react-router-dom";
@@ -71,8 +72,10 @@ export default function ACaminho() {
   const tamanhos = useStore((s) => s.tamanhos);
   const motivos = useStore((s) => s.motivos);
   const pedidosACaminho = useStore((s) => s.pedidosACaminho);
+  const devolucoes = useStore((s) => s.devolucoes);
   const addPedidoACaminho = useStore((s) => s.addPedidoACaminho);
   const deletePedidoACaminho = useStore((s) => s.deletePedidoACaminho);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormState>(empty());
   const [busca, setBusca] = useState("");
@@ -136,19 +139,33 @@ export default function ACaminho() {
       });
       return;
     }
-    // Anti-duplicidade: não permite cadastrar o mesmo ID em "a caminho" duas vezes
+    // Anti-duplicidade contra a própria lista "a caminho"
     const pedidoNorm = form.pedidoId.trim().toLowerCase();
-    const dup = pedidosACaminho.find(
-      (p) => p.pedidoId.trim().toLowerCase() === pedidoNorm,
+    const dupCaminho = pedidosACaminho.find(
+      (p) => p.id !== editingId && p.pedidoId.trim().toLowerCase() === pedidoNorm,
     );
-    if (dup) {
+    if (dupCaminho) {
       toast({
         title: "Pedido já está a caminho",
-        description: `O ID "${form.pedidoId.trim()}" já foi pré-cadastrado. Use o botão "Receber" na lista.`,
+        description: `O ID "${form.pedidoId.trim()}" já foi pré-cadastrado. Use "Receber" ou "Editar" na lista.`,
         variant: "destructive",
       });
       return;
     }
+    // Anti-duplicidade contra devoluções já registradas — evita re-cadastro
+    const dupDev = devolucoes.find(
+      (d) => d.pedidoId.trim().toLowerCase() === pedidoNorm,
+    );
+    if (dupDev) {
+      toast({
+        title: "Pedido já registrado como devolução",
+        description: `"${form.pedidoId.trim()}" já consta na Fila/Disputas — não precisa re-cadastrar aqui.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    // Modo edição: deletar o antigo e re-inserir (mantém sync DB consistente)
+    if (editingId) deletePedidoACaminho(editingId);
     addPedidoACaminho({
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
@@ -156,7 +173,6 @@ export default function ACaminho() {
       devolucaoId: form.devolucaoId.trim() || undefined,
       motivoId: form.motivoId || undefined,
       notas: form.notas.trim() || undefined,
-      // Valor único: armazenamos no primeiro item para preservar o modelo
       itens: form.itens.map((it, idx) => ({
         id: it.id,
         modeloId: it.modeloId,
@@ -168,15 +184,49 @@ export default function ACaminho() {
       })),
     });
     toast({
-      title: "Pedido a caminho registrado",
+      title: editingId ? "Pedido atualizado" : "Pedido a caminho registrado",
       description: `${form.pedidoId.trim()} · ${form.itens.length} item(ns)`,
     });
+    setEditingId(null);
     setForm({
       ...empty(),
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
     });
     setTimeout(() => firstFieldRef.current?.focus(), 0);
+  };
+
+  const editarPedido = (p: PedidoACaminho) => {
+    const total = p.itens.reduce((s, it) => s + Number(it.valor || 0), 0);
+    setEditingId(p.id);
+    setForm({
+      empresaId: p.empresaId,
+      plataformaId: p.plataformaId,
+      pedidoId: p.pedidoId,
+      devolucaoId: p.devolucaoId ?? "",
+      motivoId: p.motivoId ?? "",
+      notas: p.notas ?? "",
+      valorPedido: total,
+      itens: p.itens.length > 0
+        ? p.itens.map((it) => ({
+            id: localUid(),
+            modeloId: it.modeloId,
+            pecaId: it.pecaId,
+            cor: it.cor,
+            tamanho: it.tamanho,
+            quantidade: it.quantidade,
+            valor: 0,
+          }))
+        : [emptyItem()],
+    });
+    // Rola para o formulário
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => pedidoIdRef.current?.focus(), 100);
+  };
+
+  const cancelarEdicao = () => {
+    setEditingId(null);
+    setForm(empty());
   };
 
   const lista = useMemo(() => {
@@ -213,9 +263,18 @@ export default function ACaminho() {
           onSubmit={submit}
           className="rounded-lg border border-border bg-card shadow-xs h-fit"
         >
-          <div className="flex items-center gap-2 border-b border-border px-5 py-3">
-            <Truck className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium">Novo pedido a caminho</h2>
+          <div className="flex items-center justify-between gap-2 border-b border-border px-5 py-3">
+            <div className="flex items-center gap-2">
+              <Truck className={cn("h-4 w-4", editingId ? "text-warning" : "text-primary")} />
+              <h2 className="text-sm font-medium">
+                {editingId ? "Editar pedido a caminho" : "Novo pedido a caminho"}
+              </h2>
+            </div>
+            {editingId && (
+              <Button type="button" variant="ghost" size="sm" onClick={cancelarEdicao} className="h-7">
+                Cancelar
+              </Button>
+            )}
           </div>
 
           <div className="grid gap-4 p-5">
@@ -338,7 +397,7 @@ export default function ACaminho() {
           <div className="border-t border-border bg-surface-muted/40 px-5 py-3 flex justify-end">
             <Button ref={submitRef} type="submit" size="sm" disabled={!valid}>
               <Truck className="h-3.5 w-3.5 mr-1.5" />
-              Registrar pedido
+              {editingId ? "Salvar alterações" : "Registrar pedido"}
             </Button>
           </div>
         </form>
@@ -432,13 +491,26 @@ export default function ACaminho() {
                       </p>
                     </div>
                     <div className="flex flex-col items-end justify-between gap-2">
-                      <button
-                        onClick={() => deletePedidoACaminho(p.id)}
-                        className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                        aria-label="Remover"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => editarPedido(p)}
+                          className="text-muted-foreground hover:text-primary transition-colors p-1"
+                          aria-label="Editar"
+                          title="Editar"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deletePedidoACaminho(p.id)}
+                          className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                          aria-label="Remover"
+                          title="Remover"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                       <Button size="sm" variant="outline" onClick={() => irParaRegistrar(p)} className="h-7">
                         Receber
                         <ArrowRight className="h-3 w-3 ml-1" />

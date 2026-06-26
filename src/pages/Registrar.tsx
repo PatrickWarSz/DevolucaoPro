@@ -90,7 +90,7 @@ const statusOptions: { value: ReturnStatus; label: string; Icon: typeof CheckCir
     value: "pending",
     label: "Aguardando valor",
     Icon: Clock,
-    cls: "data-[active=true]:bg-muted data-[active=true]:border-border data-[active=true]:text-foreground",
+    cls: "data-[active=true]:bg-primary-soft data-[active=true]:border-primary/40 data-[active=true]:text-primary",
   },
 ];
 
@@ -213,7 +213,11 @@ export default function Registrar() {
     const q = pedidoBusca.trim().toLowerCase();
     if (!q) return [];
     return pedidosACaminho
-      .filter((p) => p.pedidoId.toLowerCase().includes(q))
+      .filter(
+        (p) =>
+          p.pedidoId.toLowerCase().includes(q) ||
+          (p.devolucaoId ?? "").toLowerCase().includes(q),
+      )
       .slice(0, 5);
   }, [pedidoBusca, pedidosACaminho]);
 
@@ -448,7 +452,7 @@ export default function Registrar() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                   <Truck className="h-3.5 w-3.5" />
-                  Pedido a caminho? Cole o ID para puxar os dados
+                  Pedido a caminho? Cole o ID do pedido OU da devolução para puxar os dados
                   {pedidosACaminho.length > 0 && (
                     <span className="text-[10px] text-muted-foreground">
                       · {pedidosACaminho.length} aguardando
@@ -466,7 +470,7 @@ export default function Registrar() {
                         aplicarPedido(sugestoes[0]);
                       }
                     }}
-                    placeholder="Ex: SHP-991023 (digite ao menos 1 caractere)"
+                    placeholder="Ex: SHP-991023 ou DEV-00823"
                     className="font-mono text-sm"
                     data-skip-focus
                   />
@@ -482,7 +486,14 @@ export default function Registrar() {
                             className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between gap-3 border-b border-border last:border-0"
                           >
                             <div className="min-w-0">
-                              <div className="font-mono text-sm font-medium">{p.pedidoId}</div>
+                              <div className="font-mono text-sm font-medium">
+                                {p.pedidoId}
+                                {p.devolucaoId && (
+                                  <span className="ml-1.5 text-[11px] text-muted-foreground font-normal">
+                                    · {p.devolucaoId}
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-xs text-muted-foreground truncate">
                                 {lookup(empresas, p.empresaId)} · {lookup(plataformas, p.plataformaId)} ·{" "}
                                 {principal ? lookup(modelos, principal.modeloId) : "—"}
