@@ -452,7 +452,7 @@ export default function Registrar() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                   <Truck className="h-3.5 w-3.5" />
-                  Pedido a caminho? Cole o ID para puxar os dados
+                  Pedido a caminho? Cole o ID do pedido OU da devolução para puxar os dados
                   {pedidosACaminho.length > 0 && (
                     <span className="text-[10px] text-muted-foreground">
                       · {pedidosACaminho.length} aguardando
