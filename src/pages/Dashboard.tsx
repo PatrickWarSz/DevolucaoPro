@@ -46,6 +46,7 @@ import { Download, TrendingDown, Activity, Percent, Package, Trash2, ChevronDown
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import type { Devolucao } from "@/lib/types";
+import { estimarCustoDevolucao } from "@/lib/platformConfig";
 import {
   Bar,
   BarChart,
