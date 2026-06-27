@@ -374,12 +374,15 @@ function PlataformasPanel() {
   const addPlataforma = useStore((s) => s.addPlataforma);
   const deletePlataforma = useStore((s) => s.deletePlataforma);
   const [nome, setNome] = useState("");
+  const fees = usePlatformFees();
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-xs">
       <div className="border-b border-border px-4 py-3">
         <h3 className="text-sm font-medium">Plataformas</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">Marketplaces disponíveis no sistema.</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Marketplaces disponíveis. As taxas abaixo alimentam a estimativa de "custo da devolução" no Registrar e no Dashboard.
+        </p>
       </div>
       <div className="flex items-end gap-2 border-b border-border bg-surface-muted/40 p-3">
         <div className="flex-1">
@@ -399,22 +402,66 @@ function PlataformasPanel() {
         </Button>
       </div>
       <ul className="divide-y divide-border">
-        {plataformas.map((p) => (
-          <li key={p.id} className="flex items-center justify-between px-4 py-2.5">
-            <p className="text-sm">{p.nome}</p>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-              onClick={() => {
-                if (confirm(`Excluir "${p.nome}"? Os vínculos serão removidos.`))
-                  deletePlataforma(p.id);
-              }}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </li>
-        ))}
+        {plataformas.map((p) => {
+          const cur = fees[p.id] ?? { taxaFixa: 0, freteMedio: 0 };
+          return (
+            <li key={p.id} className="px-4 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">{p.nome}</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                  onClick={() => {
+                    if (confirm(`Excluir "${p.nome}"? Os vínculos serão removidos.`))
+                      deletePlataforma(p.id);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Taxa fixa (R$)
+                  </label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={cur.taxaFixa || ""}
+                    onChange={(e) =>
+                      setPlatformFees(p.id, { ...cur, taxaFixa: Number(e.target.value) || 0 })
+                    }
+                    placeholder="Ex: 15,00 (Shopee)"
+                    className="h-8 tabular text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Frete médio ida+reverso (R$)
+                  </label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={cur.freteMedio || ""}
+                    onChange={(e) =>
+                      setPlatformFees(p.id, { ...cur, freteMedio: Number(e.target.value) || 0 })
+                    }
+                    placeholder="Ex: 20,00"
+                    className="h-8 tabular text-sm"
+                  />
+                </div>
+              </div>
+              {(cur.taxaFixa > 0 || cur.freteMedio > 0) && (
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  Estimativa por devolução: <span className="font-medium text-foreground">R$ {(cur.taxaFixa + cur.freteMedio).toFixed(2)}</span>
+                </p>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
