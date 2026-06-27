@@ -46,6 +46,7 @@ import { Download, TrendingDown, Activity, Percent, Package, Trash2, ChevronDown
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import type { Devolucao } from "@/lib/types";
+import { estimarCustoDevolucao } from "@/lib/platformConfig";
 import {
   Bar,
   BarChart,
@@ -129,17 +130,20 @@ export default function Dashboard() {
     // Apenas devoluções cujo motivo gera perda operacional entram nos
     // indicadores financeiros (recuperado / perda / em risco).
     const comPerda = filtradas.filter((d) => motivoGeraPerda(motivos, d.motivoId));
+    // NOVO MODELO: trabalhamos com CUSTO REAL da devolução (frete + taxas),
+    // não com valor bruto do pedido. valorEfetivo já aplica essa regra.
     const valorPerda = comPerda
       .filter((d) => d.status === "loss")
-      .reduce((s, d) => s + valorTotal(d), 0);
+      .reduce((s, d) => s + valorEfetivo(d, motivos), 0);
     const valorRecuperado = comPerda
       .filter((d) => d.status === "resolved")
-      .reduce((s, d) => s + (d.valorRecuperado ?? valorTotal(d)), 0);
+      .reduce((s, d) => s + valorEfetivo(d, motivos), 0);
     const disputasAbertas = filtradas.filter((d) => d.status === "dispute").length;
+    // "Em risco" nas disputas = estimativa de custo se perder (taxa fixa + frete médio)
     const valorEmDisputa = comPerda
       .filter((d) => d.status === "dispute")
-      .reduce((s, d) => s + valorTotal(d), 0);
-    const totalAvaliado = comPerda.reduce((s, d) => s + valorTotal(d), 0);
+      .reduce((s, d) => s + (estimarCustoDevolucao(d.plataformaId) ?? 0), 0);
+    const totalAvaliado = valorPerda + valorRecuperado;
     const taxaRecuperacao = totalAvaliado > 0 ? (valorRecuperado / totalAvaliado) * 100 : 0;
     const semPerda = filtradas.length - comPerda.length;
     return {
@@ -430,24 +434,24 @@ export default function Dashboard() {
           sub={`${stats.totalItens} itens no total`}
         />
         <KpiCard
-          label="Valor de perda"
+          label="Custo das perdas"
           value={fmtBRL(stats.valorPerda)}
           tone="destructive"
           icon={<TrendingDown className="h-4 w-4" />}
-          sub="confirmadas"
+          sub="frete + taxas perdidas"
         />
         <KpiCard
           label="Disputas em aberto"
           value={stats.disputasAbertas}
           tone="warning"
-          sub={fmtBRL(stats.valorEmDisputa) + " em risco"}
+          sub={fmtBRL(stats.valorEmDisputa) + " estimado em risco"}
         />
         <KpiCard
           label="Taxa de recuperação"
           value={`${stats.taxaRecuperacao.toFixed(1)}%`}
           tone="success"
           icon={<Percent className="h-4 w-4" />}
-          sub={`${fmtBRL(stats.valorRecuperado)} recuperado`}
+          sub={`${fmtBRL(stats.valorRecuperado)} recuperado em disputas`}
         />
       </div>
 
