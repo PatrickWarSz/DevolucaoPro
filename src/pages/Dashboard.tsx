@@ -434,24 +434,24 @@ export default function Dashboard() {
           sub={`${stats.totalItens} itens no total`}
         />
         <KpiCard
-          label="Valor de perda"
+          label="Custo das perdas"
           value={fmtBRL(stats.valorPerda)}
           tone="destructive"
           icon={<TrendingDown className="h-4 w-4" />}
-          sub="confirmadas"
+          sub="frete + taxas perdidas"
         />
         <KpiCard
           label="Disputas em aberto"
           value={stats.disputasAbertas}
           tone="warning"
-          sub={fmtBRL(stats.valorEmDisputa) + " em risco"}
+          sub={fmtBRL(stats.valorEmDisputa) + " estimado em risco"}
         />
         <KpiCard
           label="Taxa de recuperação"
           value={`${stats.taxaRecuperacao.toFixed(1)}%`}
           tone="success"
           icon={<Percent className="h-4 w-4" />}
-          sub={`${fmtBRL(stats.valorRecuperado)} recuperado`}
+          sub={`${fmtBRL(stats.valorRecuperado)} recuperado em disputas`}
         />
       </div>
 
