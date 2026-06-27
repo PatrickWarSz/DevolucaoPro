@@ -129,17 +129,20 @@ export default function Dashboard() {
     // Apenas devoluções cujo motivo gera perda operacional entram nos
     // indicadores financeiros (recuperado / perda / em risco).
     const comPerda = filtradas.filter((d) => motivoGeraPerda(motivos, d.motivoId));
+    // NOVO MODELO: trabalhamos com CUSTO REAL da devolução (frete + taxas),
+    // não com valor bruto do pedido. valorEfetivo já aplica essa regra.
     const valorPerda = comPerda
       .filter((d) => d.status === "loss")
-      .reduce((s, d) => s + valorTotal(d), 0);
+      .reduce((s, d) => s + valorEfetivo(d, motivos), 0);
     const valorRecuperado = comPerda
       .filter((d) => d.status === "resolved")
-      .reduce((s, d) => s + (d.valorRecuperado ?? valorTotal(d)), 0);
+      .reduce((s, d) => s + valorEfetivo(d, motivos), 0);
     const disputasAbertas = filtradas.filter((d) => d.status === "dispute").length;
+    // "Em risco" nas disputas = estimativa de custo se perder (taxa fixa + frete médio)
     const valorEmDisputa = comPerda
       .filter((d) => d.status === "dispute")
-      .reduce((s, d) => s + valorTotal(d), 0);
-    const totalAvaliado = comPerda.reduce((s, d) => s + valorTotal(d), 0);
+      .reduce((s, d) => s + (estimarCustoDevolucao(d.plataformaId) ?? 0), 0);
+    const totalAvaliado = valorPerda + valorRecuperado;
     const taxaRecuperacao = totalAvaliado > 0 ? (valorRecuperado / totalAvaliado) * 100 : 0;
     const semPerda = filtradas.length - comPerda.length;
     return {
