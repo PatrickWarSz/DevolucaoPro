@@ -15,6 +15,7 @@ import { fmtBRL, fmtDateTime, isToday, statusLabel, valorTotal, quantidadeTotal,
 import { advanceOnEnter } from "@/lib/focus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
+import { estimarCustoDevolucao } from "@/lib/platformConfig";
 
 type ItemForm = Omit<DevolucaoItem, "id"> & { id: string };
 
@@ -333,11 +334,13 @@ export default function Registrar() {
         return;
       }
     }
-    // Valor da perda (status loss). Se o usuário não informou, assume valor
-    // total do pedido. Se informou 0 explicitamente, respeita 0.
-    const perda = form.status === "loss"
-      ? (Number(form.valorPerda) || 0)
-      : undefined;
+    // NOVO MODELO: valorRecuperado guarda o CUSTO REAL da devolução (frete +
+    // taxas), tanto em perda confirmada quanto em resolvida pós-disputa.
+    // Não usamos mais o valor bruto do pedido como financeiro — o bruto é
+    // neutro (produto e dinheiro voltam). O que importa é o custo operacional.
+    const custoInformado = Number(form.valorPerda) || 0;
+    const exigeCusto = form.status === "loss" || (form.status === "resolved" && motivoGeraPerda(motivos, form.motivoId));
+    const valorRecuperado = exigeCusto ? custoInformado : undefined;
     addDevolucao({
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
@@ -347,11 +350,7 @@ export default function Registrar() {
       motivoId: form.motivoId,
       tipoDefeitoId: exigeTipoDefeito ? form.tipoDefeitoId || undefined : undefined,
       status: form.status,
-      // valorRecuperado guarda: total recuperado (resolved) OU valor real da perda (loss)
-      valorRecuperado:
-        form.status === "resolved" ? totalCalc
-        : form.status === "loss"    ? perda
-        : undefined,
+      valorRecuperado,
       notas: form.notas.trim() || undefined,
 
       // Distribui o valor total uniformemente entre os itens — assim a soma
