@@ -8,6 +8,7 @@ import { Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import SubscriptionPanel from "@/components/settings/SubscriptionPanel";
+import { usePlatformFees, setPlatformFees } from "@/lib/platformConfig";
 
 export default function Configuracoes() {
   const { toast } = useToast();
