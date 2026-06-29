@@ -133,5 +133,5 @@ export function estimarCustoDevolucao(
 
 /** Hook React reativo aos overrides */
 export function usePlatformFees(): Store {
-  return useSyncExternalStore(subscribe, read, () => ({}));
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
