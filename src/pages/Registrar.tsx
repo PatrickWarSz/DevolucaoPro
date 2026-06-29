@@ -779,34 +779,46 @@ export default function Registrar() {
             </div>
 
             {(() => {
-              const exigeCusto = form.status === "loss" || (form.status === "resolved" && !!form.motivoId && motivoGeraPerda(motivos, form.motivoId));
-              if (!exigeCusto) return null;
               const isLoss = form.status === "loss";
-              const estimativa = form.plataformaId ? estimarCustoDevolucao(form.plataformaId) : null;
+              const isDispute = form.status === "dispute";
+              const exigeCusto =
+                isLoss ||
+                (form.status === "resolved" && !!form.motivoId && motivoGeraPerda(motivos, form.motivoId));
+              if (!exigeCusto && !isDispute) return null;
+              const plataformaNome = plataformas.find((p) => p.id === form.plataformaId)?.nome;
+              const estimativa = form.plataformaId
+                ? estimarCustoDevolucao(form.plataformaId, plataformaNome)
+                : null;
               const toneCls = isLoss
                 ? "border-destructive/30 bg-destructive-soft/40"
-                : "border-success/30 bg-success-soft/40";
+                : isDispute
+                  ? "border-warning/30 bg-warning-soft/40"
+                  : "border-success/30 bg-success-soft/40";
               const labelCls = isLoss
                 ? "text-destructive-soft-foreground"
-                : "text-success-soft-foreground";
+                : isDispute
+                  ? "text-warning-soft-foreground"
+                  : "text-success-soft-foreground";
+              const titulo = isLoss
+                ? "Custo real da perda (R$) *"
+                : isDispute
+                  ? "Valor em disputa (R$)"
+                  : "Custo recuperado nesta disputa (R$) *";
+              const desc = isLoss
+                ? "Quanto saiu da sua carteira: frete de ida + frete reverso + taxa fixa — não o valor bruto do pedido."
+                : isDispute
+                  ? "Opcional. Se deixar em branco, o dashboard estima automaticamente (taxa fixa + frete médio da plataforma)."
+                  : "Quanto você EVITOU perder ao ganhar a disputa: frete + taxas que seriam descontadas. Se a plataforma não informa, use a estimativa abaixo.";
               return (
                 <div className={cn("mt-3 rounded-md border px-3 py-2.5", toneCls)}>
-                  <Label className={cn("text-xs font-medium", labelCls)}>
-                    {isLoss
-                      ? "Custo real da perda (R$) *"
-                      : "Custo recuperado nesta disputa (R$) *"}
-                  </Label>
-                  <p className={cn("text-[11px] mt-0.5 opacity-90", labelCls)}>
-                    {isLoss
-                      ? "Quanto saiu da sua carteira: frete de ida + frete reverso + taxa fixa (Shopee R$ 15) — não o valor bruto do pedido."
-                      : "Quanto você EVITOU perder ao ganhar a disputa: frete + taxas que seriam descontadas. Se a plataforma não informa, use a estimativa abaixo."}
-                  </p>
+                  <Label className={cn("text-xs font-medium", labelCls)}>{titulo}</Label>
+                  <p className={cn("text-[11px] mt-0.5 opacity-90", labelCls)}>{desc}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <Input
                       type="number"
                       min={0}
                       step="0.01"
-                      placeholder="0,00"
+                      placeholder={isDispute && estimativa !== null ? `auto: ${fmtBRL(estimativa)}` : "0,00"}
                       value={form.valorPerda || ""}
                       onChange={(e) => set("valorPerda", Number(e.target.value))}
                       className="tabular text-base font-medium bg-card flex-1"
@@ -817,21 +829,22 @@ export default function Registrar() {
                         variant="outline"
                         size="sm"
                         onClick={() => set("valorPerda", estimativa)}
-                        title="Usar taxa fixa + frete médio cadastrados em Configurações → Plataformas"
+                        title="Usar estimativa da plataforma (taxa fixa + frete médio)"
                       >
                         ≈ {fmtBRL(estimativa)}
                       </Button>
                     )}
                   </div>
-                  {estimativa === null && (
+                  {estimativa === null && form.plataformaId && (
                     <p className="text-[11px] text-muted-foreground mt-1.5">
-                      Dica: cadastre taxa fixa e frete médio em <span className="font-medium">Configurações → Plataformas</span> para preencher esse campo automaticamente.
+                      Plataforma sem estimativa nativa. Ajuste em <span className="font-medium">Configurações → Plataformas</span> se quiser preenchimento automático.
                     </p>
                   )}
                 </div>
               );
             })()}
           </div>
+
 
 
           {/* Itens */}
