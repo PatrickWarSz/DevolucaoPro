@@ -162,7 +162,8 @@ export default function Dashboard() {
       taxaRecuperacao,
       semPerda,
     };
-  }, [filtradas, motivos]);
+  }, [filtradas, motivos, plataformas]);
+
 
   const evolucaoMensal = useMemo(() => {
     const map = new Map<string, { mes: string; resolvidas: number; perdas: number; disputasQtd: number }>();
