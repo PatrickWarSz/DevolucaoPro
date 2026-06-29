@@ -335,12 +335,16 @@ export default function Registrar() {
       }
     }
     // NOVO MODELO: valorRecuperado guarda o CUSTO REAL da devolução (frete +
-    // taxas), tanto em perda confirmada quanto em resolvida pós-disputa.
-    // Não usamos mais o valor bruto do pedido como financeiro — o bruto é
-    // neutro (produto e dinheiro voltam). O que importa é o custo operacional.
+    // taxas) para loss/resolved, e o VALOR EM RISCO para disputas.
+    // Em disputa, se o usuário não informar, o dashboard usa a estimativa
+    // automática (taxa fixa + frete médio) baseada na plataforma.
     const custoInformado = Number(form.valorPerda) || 0;
-    const exigeCusto = form.status === "loss" || (form.status === "resolved" && motivoGeraPerda(motivos, form.motivoId));
-    const valorRecuperado = exigeCusto ? custoInformado : undefined;
+    const exigeCusto =
+      form.status === "loss" ||
+      (form.status === "resolved" && motivoGeraPerda(motivos, form.motivoId));
+    let valorRecuperado: number | undefined = undefined;
+    if (exigeCusto) valorRecuperado = custoInformado;
+    else if (form.status === "dispute" && custoInformado > 0) valorRecuperado = custoInformado;
     addDevolucao({
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
@@ -352,6 +356,7 @@ export default function Registrar() {
       status: form.status,
       valorRecuperado,
       notas: form.notas.trim() || undefined,
+
 
       // Distribui o valor total uniformemente entre os itens — assim a soma
       // bate com o total do pedido e nenhum item fica "zerado" no display.
