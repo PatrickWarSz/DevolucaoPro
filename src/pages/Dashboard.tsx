@@ -139,10 +139,16 @@ export default function Dashboard() {
       .filter((d) => d.status === "resolved")
       .reduce((s, d) => s + valorEfetivo(d, motivos), 0);
     const disputasAbertas = filtradas.filter((d) => d.status === "dispute").length;
-    // "Em risco" nas disputas = estimativa de custo se perder (taxa fixa + frete médio)
+    // "Em risco" nas disputas = valor informado pelo operador, OU estimativa
+    // automática (taxa fixa + frete médio) baseada na plataforma.
     const valorEmDisputa = comPerda
       .filter((d) => d.status === "dispute")
-      .reduce((s, d) => s + (estimarCustoDevolucao(d.plataformaId) ?? 0), 0);
+      .reduce((s, d) => {
+        if (d.valorRecuperado && d.valorRecuperado > 0) return s + d.valorRecuperado;
+        const nome = lookup(plataformas, d.plataformaId);
+        return s + (estimarCustoDevolucao(d.plataformaId, nome) ?? 0);
+      }, 0);
+
     const totalAvaliado = valorPerda + valorRecuperado;
     const taxaRecuperacao = totalAvaliado > 0 ? (valorRecuperado / totalAvaliado) * 100 : 0;
     const semPerda = filtradas.length - comPerda.length;
