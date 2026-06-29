@@ -59,8 +59,33 @@ function read(): Store {
   }
 }
 
+let cache: Store = read();
+let cacheRaw: string | null =
+  typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+
+function getSnapshot(): Store {
+  if (typeof window === "undefined") return cache;
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw !== cacheRaw) {
+    cacheRaw = raw;
+    try {
+      cache = raw ? (JSON.parse(raw) as Store) : {};
+    } catch {
+      cache = {};
+    }
+  }
+  return cache;
+}
+
+const EMPTY: Store = {};
+function getServerSnapshot(): Store {
+  return EMPTY;
+}
+
 function write(s: Store) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  cache = s;
+  cacheRaw = JSON.stringify(s);
+  localStorage.setItem(STORAGE_KEY, cacheRaw);
   listeners.forEach((l) => l());
 }
 
@@ -108,5 +133,5 @@ export function estimarCustoDevolucao(
 
 /** Hook React reativo aos overrides */
 export function usePlatformFees(): Store {
-  return useSyncExternalStore(subscribe, read, () => ({}));
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
