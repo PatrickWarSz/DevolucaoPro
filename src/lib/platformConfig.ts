@@ -1,24 +1,49 @@
 /**
  * platformConfig.ts
  *
- * Configuração de custos de devolução por plataforma (taxa fixa + frete médio
- * estimado). Usada para:
- *   1) Pré-preencher o campo "Custo da devolução" no Registrar quando o
- *      usuário ganha disputa mas a plataforma não informa o valor recuperado.
+ * Estimativa de custo de devolução por plataforma. Usada para:
+ *   1) Pré-preencher "Custo da devolução" no Registrar.
  *   2) Estimar valor em risco em disputas no Dashboard.
  *
- * Persistido em localStorage (não vai pro Supabase) — é configuração 100%
- * do operador, não precisa sincronizar entre dispositivos por enquanto.
+ * Há DOIS níveis de configuração:
+ *   - Defaults nativos por plataforma (Shopee, Mercado Livre, Shein, TikTok)
+ *     embutidos no app — o operador NÃO precisa cadastrar nada.
+ *   - Override personalizado em localStorage (Configurações → Plataformas)
+ *     pra quem quer ajustar taxa fixa ou frete médio à sua realidade.
+ *
+ * O cálculo final é sempre: taxaFixa + freteMedio.
  */
 
 import { useSyncExternalStore } from "react";
 
 export interface PlatformFees {
-  /** Taxa fixa cobrada quando o erro é do vendedor (Shopee: R$ 15) */
+  /** Taxa fixa cobrada quando o erro é do vendedor */
   taxaFixa: number;
-  /** Frete médio (ida + reverso) estimado para essa plataforma */
+  /** Frete médio (ida + reverso) estimado */
   freteMedio: number;
 }
+
+// =================== DEFAULTS NATIVOS ===================
+// Valores aproximados baseados na política pública de cada marketplace
+// (jun/2026). Operador pode sobrescrever em Configurações.
+const DEFAULTS: { match: RegExp; fees: PlatformFees }[] = [
+  // Shopee: taxa fixa ~R$ 4/item + frete reverso médio ~R$ 18
+  { match: /shopee/i, fees: { taxaFixa: 4, freteMedio: 18 } },
+  // Mercado Livre: custo fixo ~R$ 6 + frete ida+volta médio ~R$ 35
+  { match: /mercado\s*livre|mercadolivre|^ml$/i, fees: { taxaFixa: 6, freteMedio: 35 } },
+  // Shein: comissão ~R$ 5 + frete reverso ~R$ 25
+  { match: /shein/i, fees: { taxaFixa: 5, freteMedio: 25 } },
+  // TikTok Shop: taxa ~R$ 4 + frete ~R$ 20
+  { match: /tiktok/i, fees: { taxaFixa: 4, freteMedio: 20 } },
+];
+
+export function getDefaultFeesByName(nome: string | undefined | null): PlatformFees | null {
+  if (!nome) return null;
+  const hit = DEFAULTS.find((d) => d.match.test(nome));
+  return hit ? { ...hit.fees } : null;
+}
+
+// =================== OVERRIDES (localStorage) ===================
 
 const STORAGE_KEY = "vexo-platform-fees-v1";
 
@@ -45,9 +70,14 @@ function subscribe(cb: () => void) {
   return () => listeners.delete(cb);
 }
 
-export function getPlatformFees(plataformaId: string): PlatformFees | null {
+/** Retorna fees customizados (se houver) OU defaults nativos pelo nome. */
+export function getPlatformFees(
+  plataformaId: string,
+  plataformaNome?: string,
+): PlatformFees | null {
   const s = read();
-  return s[plataformaId] ?? null;
+  if (s[plataformaId]) return s[plataformaId];
+  return getDefaultFeesByName(plataformaNome);
 }
 
 export function setPlatformFees(plataformaId: string, fees: PlatformFees) {
@@ -56,14 +86,27 @@ export function setPlatformFees(plataformaId: string, fees: PlatformFees) {
   write(s);
 }
 
-export function estimarCustoDevolucao(plataformaId: string): number | null {
-  const f = getPlatformFees(plataformaId);
+export function clearPlatformFees(plataformaId: string) {
+  const s = read();
+  delete s[plataformaId];
+  write(s);
+}
+
+export function hasCustomFees(plataformaId: string): boolean {
+  return !!read()[plataformaId];
+}
+
+export function estimarCustoDevolucao(
+  plataformaId: string,
+  plataformaNome?: string,
+): number | null {
+  const f = getPlatformFees(plataformaId, plataformaNome);
   if (!f) return null;
   const v = Number(f.taxaFixa || 0) + Number(f.freteMedio || 0);
   return v > 0 ? v : null;
 }
 
-/** Hook React reativo */
+/** Hook React reativo aos overrides */
 export function usePlatformFees(): Store {
   return useSyncExternalStore(subscribe, read, () => ({}));
 }
