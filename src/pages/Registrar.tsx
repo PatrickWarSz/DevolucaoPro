@@ -334,17 +334,14 @@ export default function Registrar() {
         return;
       }
     }
-    // NOVO MODELO: valorRecuperado guarda o CUSTO REAL da devolução (frete +
-    // taxas) para loss/resolved, e o VALOR EM RISCO para disputas.
-    // Em disputa, se o usuário não informar, o dashboard usa a estimativa
-    // automática (taxa fixa + frete médio) baseada na plataforma.
+    // NOVO MODELO: valorRecuperado guarda o CUSTO REAL da devolução para loss,
+    // ou o VALOR EM RISCO para disputas. Para resolvidas SEM disputa, não há
+    // custo financeiro a registrar — entram só como contagem operacional.
     const custoInformado = Number(form.valorPerda) || 0;
-    const exigeCusto =
-      form.status === "loss" ||
-      (form.status === "resolved" && motivoGeraPerda(motivos, form.motivoId));
     let valorRecuperado: number | undefined = undefined;
-    if (exigeCusto) valorRecuperado = custoInformado;
+    if (form.status === "loss") valorRecuperado = custoInformado;
     else if (form.status === "dispute" && custoInformado > 0) valorRecuperado = custoInformado;
+
     addDevolucao({
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
