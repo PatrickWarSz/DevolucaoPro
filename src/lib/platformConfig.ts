@@ -135,3 +135,107 @@ export function estimarCustoDevolucao(
 export function usePlatformFees(): Store {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
+
+// =================== AMOSTRAS DE FRETE (auto-aprendizado) ===================
+// Quando o operador registra uma PERDA, capturamos o valor real descontado
+// da carteira como amostra de frete. Após N amostras, calculamos a média e
+// gravamos como freteMedio — daí pra frente o sistema usa o valor aprendido.
+
+export const FREIGHT_SAMPLE_THRESHOLD = 5;
+const SAMPLES_KEY = "vexo-platform-freight-samples-v1";
+
+type Samples = Record<string, number[]>;
+
+function readSamples(): Samples {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(SAMPLES_KEY);
+    return raw ? (JSON.parse(raw) as Samples) : {};
+  } catch {
+    return {};
+  }
+}
+
+let samplesCache: Samples = readSamples();
+let samplesCacheRaw: string | null =
+  typeof window !== "undefined" ? localStorage.getItem(SAMPLES_KEY) : null;
+
+function getSamplesSnapshot(): Samples {
+  if (typeof window === "undefined") return samplesCache;
+  const raw = localStorage.getItem(SAMPLES_KEY);
+  if (raw !== samplesCacheRaw) {
+    samplesCacheRaw = raw;
+    try {
+      samplesCache = raw ? (JSON.parse(raw) as Samples) : {};
+    } catch {
+      samplesCache = {};
+    }
+  }
+  return samplesCache;
+}
+
+const EMPTY_SAMPLES: Samples = {};
+function getSamplesServerSnapshot(): Samples {
+  return EMPTY_SAMPLES;
+}
+
+const samplesListeners = new Set<() => void>();
+function subscribeSamples(cb: () => void) {
+  samplesListeners.add(cb);
+  return () => samplesListeners.delete(cb);
+}
+
+function writeSamples(s: Samples) {
+  samplesCache = s;
+  samplesCacheRaw = JSON.stringify(s);
+  localStorage.setItem(SAMPLES_KEY, samplesCacheRaw);
+  samplesListeners.forEach((l) => l());
+}
+
+export function getFreightSamples(plataformaId: string): number[] {
+  return readSamples()[plataformaId] ?? [];
+}
+
+export function getFreightSampleCount(plataformaId: string): number {
+  return getFreightSamples(plataformaId).length;
+}
+
+export function addFreightSample(plataformaId: string, valor: number): {
+  total: number;
+  thresholdAtingido: boolean;
+  media?: number;
+} {
+  if (!plataformaId || !(valor > 0)) return { total: 0, thresholdAtingido: false };
+  const s = readSamples();
+  const arr = s[plataformaId] ? [...s[plataformaId]] : [];
+  arr.push(valor);
+  s[plataformaId] = arr;
+  writeSamples(s);
+
+  if (arr.length >= FREIGHT_SAMPLE_THRESHOLD) {
+    const media = arr.reduce((a, b) => a + b, 0) / arr.length;
+    const existing = read()[plataformaId] ?? { taxaFixa: 0, freteMedio: 0 };
+    setPlatformFees(plataformaId, { ...existing, freteMedio: Number(media.toFixed(2)) });
+    return { total: arr.length, thresholdAtingido: true, media };
+  }
+  return { total: arr.length, thresholdAtingido: false };
+}
+
+export function resetFreightSamples(plataformaId: string) {
+  const s = readSamples();
+  delete s[plataformaId];
+  writeSamples(s);
+}
+
+/** true enquanto estivermos coletando amostras pra esta plataforma. */
+export function precisaAmostraFrete(plataformaId: string): boolean {
+  if (!plataformaId) return false;
+  if (hasCustomFees(plataformaId)) return false;
+  return getFreightSampleCount(plataformaId) < FREIGHT_SAMPLE_THRESHOLD;
+}
+
+/** Hook React reativo às amostras */
+export function useFreightSamples(): Samples {
+  return useSyncExternalStore(subscribeSamples, getSamplesSnapshot, getSamplesServerSnapshot);
+}
+
