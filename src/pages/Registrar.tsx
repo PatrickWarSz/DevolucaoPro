@@ -338,9 +338,21 @@ export default function Registrar() {
     // ou o VALOR EM RISCO para disputas. Para resolvidas SEM disputa, não há
     // custo financeiro a registrar — entram só como contagem operacional.
     const custoInformado = Number(form.valorPerda) || 0;
+    const plataformaNomeAtual = plataformas.find((p) => p.id === form.plataformaId)?.nome;
     let valorRecuperado: number | undefined = undefined;
-    if (form.status === "loss") valorRecuperado = custoInformado;
-    else if (form.status === "dispute" && custoInformado > 0) valorRecuperado = custoInformado;
+    if (form.status === "loss") {
+      // Se o operador informou, usa. Se não (já aprendemos amostras suficientes),
+      // aplica a estimativa automática da plataforma.
+      if (custoInformado > 0) {
+        valorRecuperado = custoInformado;
+      } else {
+        const est = estimarCustoDevolucao(form.plataformaId, plataformaNomeAtual);
+        if (est !== null) valorRecuperado = est;
+      }
+    } else if (form.status === "dispute" && custoInformado > 0) {
+      valorRecuperado = custoInformado;
+    }
+
 
     addDevolucao({
       empresaId: form.empresaId,
