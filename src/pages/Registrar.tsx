@@ -15,7 +15,7 @@ import { fmtBRL, fmtDateTime, isToday, statusLabel, valorTotal, quantidadeTotal,
 import { advanceOnEnter } from "@/lib/focus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
-import { estimarCustoDevolucao } from "@/lib/platformConfig";
+import { estimarCustoDevolucao, addFreightSample, precisaAmostraFrete, getFreightSampleCount, FREIGHT_SAMPLE_THRESHOLD } from "@/lib/platformConfig";
 
 type ItemForm = Omit<DevolucaoItem, "id"> & { id: string };
 
