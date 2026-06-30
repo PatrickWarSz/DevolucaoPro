@@ -374,10 +374,23 @@ export default function Registrar() {
       deletePedidoACaminho(pedidoOriginalId);
       setPedidoOriginalId(null);
     }
+    // Auto-aprendizado de frete: cada perda confirmada vira amostra. Após
+    // FREIGHT_SAMPLE_THRESHOLD amostras, a média vira o freteMedio da plataforma
+    // e paramos de exigir o input manual em perdas futuras.
+    let aprendizadoMsg = "";
+    if (form.status === "loss" && custoInformado > 0 && precisaAmostraFrete(form.plataformaId)) {
+      const r = addFreightSample(form.plataformaId, custoInformado);
+      if (r.thresholdAtingido && r.media != null) {
+        aprendizadoMsg = ` · frete médio aprendido: ${fmtBRL(r.media)} (${r.total} amostras)`;
+      } else {
+        aprendizadoMsg = ` · amostra ${r.total}/${FREIGHT_SAMPLE_THRESHOLD}`;
+      }
+    }
     toast({
       title: "Devolução registrada",
-      description: `${form.itens.length} ite${form.itens.length === 1 ? "m" : "ns"} · ${fmtBRL(totalCalc)} · ${statusLabel[form.status]}`,
+      description: `${form.itens.length} ite${form.itens.length === 1 ? "m" : "ns"} · ${fmtBRL(totalCalc)} · ${statusLabel[form.status]}${aprendizadoMsg}`,
     });
+
     if (andNext) {
       setForm({
         ...empty(),
