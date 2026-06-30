@@ -791,34 +791,42 @@ export default function Registrar() {
             {(() => {
               const isLoss = form.status === "loss";
               const isDispute = form.status === "dispute";
-              const exigeCusto =
-                isLoss ||
-                (form.status === "resolved" && !!form.motivoId && motivoGeraPerda(motivos, form.motivoId));
-              if (!exigeCusto && !isDispute) return null;
+              // Resolvida não tem custo direto — é só registro operacional.
+              if (!isLoss && !isDispute) return null;
               const plataformaNome = plataformas.find((p) => p.id === form.plataformaId)?.nome;
               const estimativa = form.plataformaId
                 ? estimarCustoDevolucao(form.plataformaId, plataformaNome)
                 : null;
+              const aindaAprendendo = isLoss && form.plataformaId && precisaAmostraFrete(form.plataformaId);
+              const amostrasFeitas = form.plataformaId ? getFreightSampleCount(form.plataformaId) : 0;
+
+              // Para perdas quando já temos amostras suficientes, escondemos o
+              // input — o sistema aplica o frete médio aprendido automaticamente.
+              if (isLoss && !aindaAprendendo && estimativa !== null) {
+                return (
+                  <div className="mt-3 rounded-md border border-destructive/30 bg-destructive-soft/40 px-3 py-2.5">
+                    <Label className="text-xs font-medium text-destructive-soft-foreground">
+                      Custo estimado da perda
+                    </Label>
+                    <p className="text-[11px] mt-0.5 opacity-90 text-destructive-soft-foreground">
+                      Frete médio aprendido para <span className="font-medium">{plataformaNome}</span> · aplicado automaticamente: <span className="font-semibold">{fmtBRL(estimativa)}</span>.
+                    </p>
+                  </div>
+                );
+              }
+
               const toneCls = isLoss
                 ? "border-destructive/30 bg-destructive-soft/40"
-                : isDispute
-                  ? "border-warning/30 bg-warning-soft/40"
-                  : "border-success/30 bg-success-soft/40";
+                : "border-warning/30 bg-warning-soft/40";
               const labelCls = isLoss
                 ? "text-destructive-soft-foreground"
-                : isDispute
-                  ? "text-warning-soft-foreground"
-                  : "text-success-soft-foreground";
+                : "text-warning-soft-foreground";
               const titulo = isLoss
-                ? "Custo real da perda (R$) *"
-                : isDispute
-                  ? "Valor em disputa (R$)"
-                  : "Custo recuperado nesta disputa (R$) *";
+                ? `Frete real descontado da carteira (R$) *`
+                : "Valor em disputa (R$)";
               const desc = isLoss
-                ? "Quanto saiu da sua carteira: frete de ida + frete reverso + taxa fixa — não o valor bruto do pedido."
-                : isDispute
-                  ? "Opcional. Se deixar em branco, o dashboard estima automaticamente (taxa fixa + frete médio da plataforma)."
-                  : "Quanto você EVITOU perder ao ganhar a disputa: frete + taxas que seriam descontadas. Se a plataforma não informa, use a estimativa abaixo.";
+                ? `Quanto a plataforma descontou nesta perda. Vamos usar isso pra calcular o frete médio (${amostrasFeitas}/${FREIGHT_SAMPLE_THRESHOLD} amostras). Depois disso, o campo some.`
+                : "Opcional. Se deixar em branco, o dashboard estima automaticamente (taxa fixa + frete médio da plataforma).";
               return (
                 <div className={cn("mt-3 rounded-md border px-3 py-2.5", toneCls)}>
                   <Label className={cn("text-xs font-medium", labelCls)}>{titulo}</Label>
@@ -845,14 +853,10 @@ export default function Registrar() {
                       </Button>
                     )}
                   </div>
-                  {estimativa === null && form.plataformaId && (
-                    <p className="text-[11px] text-muted-foreground mt-1.5">
-                      Plataforma sem estimativa nativa. Ajuste em <span className="font-medium">Configurações → Plataformas</span> se quiser preenchimento automático.
-                    </p>
-                  )}
                 </div>
               );
             })()}
+
           </div>
 
 
