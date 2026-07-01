@@ -379,21 +379,9 @@ export default function Registrar() {
       deletePedidoACaminho(pedidoOriginalId);
       setPedidoOriginalId(null);
     }
-    // Auto-aprendizado de frete: cada perda confirmada vira amostra. Após
-    // FREIGHT_SAMPLE_THRESHOLD amostras, a média vira o freteMedio da plataforma
-    // e paramos de exigir o input manual em perdas futuras.
-    let aprendizadoMsg = "";
-    if (form.status === "loss" && custoInformado > 0 && precisaAmostraFrete(form.plataformaId)) {
-      const r = addFreightSample(form.plataformaId, custoInformado);
-      if (r.thresholdAtingido && r.media != null) {
-        aprendizadoMsg = ` · frete médio aprendido: ${fmtBRL(r.media)} (${r.total} amostras)`;
-      } else {
-        aprendizadoMsg = ` · amostra ${r.total}/${FREIGHT_SAMPLE_THRESHOLD}`;
-      }
-    }
     toast({
       title: "Devolução registrada",
-      description: `${form.itens.length} ite${form.itens.length === 1 ? "m" : "ns"} · ${fmtBRL(totalCalc)} · ${statusLabel[form.status]}${aprendizadoMsg}`,
+      description: `${form.itens.length} ite${form.itens.length === 1 ? "m" : "ns"} · ${fmtBRL(totalCalc)} · ${statusLabel[form.status]}`,
     });
 
     if (andNext) {
@@ -796,68 +784,31 @@ export default function Registrar() {
             {(() => {
               const isLoss = form.status === "loss";
               const isDispute = form.status === "dispute";
-              // Resolvida não tem custo direto — é só registro operacional.
+              // Resolvida / Aguardando valor não pedem input financeiro aqui.
               if (!isLoss && !isDispute) return null;
-              const plataformaNome = plataformas.find((p) => p.id === form.plataformaId)?.nome;
-              const estimativa = form.plataformaId
-                ? estimarCustoDevolucao(form.plataformaId, plataformaNome)
-                : null;
-              const aindaAprendendo = isLoss && form.plataformaId && precisaAmostraFrete(form.plataformaId);
-              const amostrasFeitas = form.plataformaId ? getFreightSampleCount(form.plataformaId) : 0;
-
-              // Para perdas quando já temos amostras suficientes, escondemos o
-              // input — o sistema aplica o frete médio aprendido automaticamente.
-              if (isLoss && !aindaAprendendo && estimativa !== null) {
-                return (
-                  <div className="mt-3 rounded-md border border-destructive/30 bg-destructive-soft/40 px-3 py-2.5">
-                    <Label className="text-xs font-medium text-destructive-soft-foreground">
-                      Custo estimado da perda
-                    </Label>
-                    <p className="text-[11px] mt-0.5 opacity-90 text-destructive-soft-foreground">
-                      Frete médio aprendido para <span className="font-medium">{plataformaNome}</span> · aplicado automaticamente: <span className="font-semibold">{fmtBRL(estimativa)}</span>.
-                    </p>
-                  </div>
-                );
-              }
-
               const toneCls = isLoss
                 ? "border-destructive/30 bg-destructive-soft/40"
                 : "border-warning/30 bg-warning-soft/40";
               const labelCls = isLoss
                 ? "text-destructive-soft-foreground"
                 : "text-warning-soft-foreground";
-              const titulo = isLoss
-                ? `Frete real descontado da carteira (R$) *`
-                : "Valor em disputa (R$)";
+              const titulo = isLoss ? "Valor da perda (R$)" : "Valor em disputa (R$)";
               const desc = isLoss
-                ? `Quanto a plataforma descontou nesta perda. Vamos usar isso pra calcular o frete médio (${amostrasFeitas}/${FREIGHT_SAMPLE_THRESHOLD} amostras). Depois disso, o campo some.`
-                : "Opcional. Se deixar em branco, o dashboard estima automaticamente (taxa fixa + frete médio da plataforma).";
+                ? "Informe quanto foi efetivamente perdido nesta devolução (frete + taxas descontadas da carteira)."
+                : "Opcional. Se informado, quando você marcar 'Ganhei' ou 'Perdi' na aba Disputas o sistema já saberá o valor exato em jogo.";
               return (
                 <div className={cn("mt-3 rounded-md border px-3 py-2.5", toneCls)}>
                   <Label className={cn("text-xs font-medium", labelCls)}>{titulo}</Label>
                   <p className={cn("text-[11px] mt-0.5 opacity-90", labelCls)}>{desc}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder={isDispute && estimativa !== null ? `auto: ${fmtBRL(estimativa)}` : "0,00"}
-                      value={form.valorPerda || ""}
-                      onChange={(e) => set("valorPerda", Number(e.target.value))}
-                      className="tabular text-base font-medium bg-card flex-1"
-                    />
-                    {estimativa !== null && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => set("valorPerda", estimativa)}
-                        title="Usar estimativa da plataforma (taxa fixa + frete médio)"
-                      >
-                        ≈ {fmtBRL(estimativa)}
-                      </Button>
-                    )}
-                  </div>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="0,00"
+                    value={form.valorPerda || ""}
+                    onChange={(e) => set("valorPerda", Number(e.target.value))}
+                    className="mt-2 tabular text-base font-medium bg-card"
+                  />
                 </div>
               );
             })()}
