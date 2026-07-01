@@ -172,8 +172,11 @@ export default function Dashboard() {
       const cur = map.get(key) ?? { mes: key, resolvidas: 0, perdas: 0, disputasQtd: 0 };
       const v = valorEfetivo(d, motivos);
       if (d.status === "resolved") cur.resolvidas += v;
-      else if (d.status === "dispute") cur.disputasQtd += 1;
       else if (d.status === "loss") cur.perdas += v;
+      // Disputas é histórico fixo: conta toda devolução que passou por status
+      // "Em disputa" em algum momento (mesmo já resolvida/perdida).
+      // "Aguardando valor" NÃO entra aqui.
+      if (d.foiDisputa) cur.disputasQtd += 1;
       map.set(key, cur);
     });
     return Array.from(map.values())

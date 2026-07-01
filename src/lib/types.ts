@@ -118,5 +118,10 @@ export interface Devolucao {
    *  como Resolvida ou Perda quando o motivo gera perda operacional. */
   tipoDefeitoId?: ID;
   notas?: string;
+  /** Sinaliza se esta devolução já passou por status "Em disputa" em algum
+   *  momento. Uma vez marcada como true, permanece true mesmo após a disputa
+   *  ser resolvida (ganha) ou perdida. Usado no dashboard para manter o
+   *  histórico de "quantas disputas foram feitas no mês" fixo. */
+  foiDisputa?: boolean;
   itens: DevolucaoItem[];
 }

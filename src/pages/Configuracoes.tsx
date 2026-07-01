@@ -8,7 +8,7 @@ import { Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import SubscriptionPanel from "@/components/settings/SubscriptionPanel";
-import { usePlatformFees, setPlatformFees, getDefaultFeesByName, hasCustomFees, clearPlatformFees, useFreightSamples, FREIGHT_SAMPLE_THRESHOLD, resetFreightSamples } from "@/lib/platformConfig";
+
 
 export default function Configuracoes() {
   const { toast } = useToast();
@@ -375,16 +375,13 @@ function PlataformasPanel() {
   const addPlataforma = useStore((s) => s.addPlataforma);
   const deletePlataforma = useStore((s) => s.deletePlataforma);
   const [nome, setNome] = useState("");
-  const fees = usePlatformFees();
-  const samples = useFreightSamples();
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-xs">
       <div className="border-b border-border px-4 py-3">
         <h3 className="text-sm font-medium">Plataformas</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Marketplaces disponíveis. <span className="font-medium text-foreground">Preencher as taxas é opcional.</span>{" "}
-          Shopee, Mercado Livre, Shein e TikTok já vêm com valores padrão; pra Shopee o frete real é aprendido automaticamente conforme você registra perdas.
+          Marketplaces disponíveis (Shopee, Mercado Livre, Shein, TikTok…). Adicione os que você opera para depois vincular às empresas.
         </p>
       </div>
       <div className="flex items-end gap-2 border-b border-border bg-surface-muted/40 p-3">
@@ -405,125 +402,27 @@ function PlataformasPanel() {
         </Button>
       </div>
       <ul className="divide-y divide-border">
-        {plataformas.map((p) => {
-          const custom = fees[p.id];
-          const isCustom = hasCustomFees(p.id);
-          const defaults = getDefaultFeesByName(p.nome);
-          const cur = custom ?? defaults ?? { taxaFixa: 0, freteMedio: 0 };
-          const samplesArr = samples[p.id] ?? [];
-          const aprendendo = samplesArr.length > 0 && samplesArr.length < FREIGHT_SAMPLE_THRESHOLD;
-          const aprendido = samplesArr.length >= FREIGHT_SAMPLE_THRESHOLD;
-          return (
-            <li key={p.id} className="px-4 py-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">{p.nome}</p>
-                  {!isCustom && defaults && (
-                    <span className="rounded bg-muted text-muted-foreground text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 border border-border">
-                      padrão
-                    </span>
-                  )}
-                  {isCustom && (
-                    <span className="rounded bg-primary-soft text-primary text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 border border-primary/30">
-                      personalizado
-                    </span>
-                  )}
-                  {aprendendo && (
-                    <span className="rounded bg-warning-soft text-warning-soft-foreground text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 border border-warning/30">
-                      aprendendo {samplesArr.length}/{FREIGHT_SAMPLE_THRESHOLD}
-                    </span>
-                  )}
-                  {aprendido && (
-                    <span className="rounded bg-success-soft text-success-soft-foreground text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 border border-success/30">
-                      auto-aprendido
-                    </span>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                  onClick={() => {
-                    if (confirm(`Excluir "${p.nome}"? Os vínculos serão removidos.`))
-                      deletePlataforma(p.id);
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Taxa fixa (R$) — opcional
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={custom?.taxaFixa ?? ""}
-                    onChange={(e) =>
-                      setPlatformFees(p.id, { ...cur, taxaFixa: Number(e.target.value) || 0 })
-                    }
-                    placeholder={defaults ? `padrão: ${defaults.taxaFixa.toFixed(2)}` : "0,00"}
-                    className="h-8 tabular text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Frete médio ida+reverso (R$) — opcional
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={custom?.freteMedio ?? ""}
-                    onChange={(e) =>
-                      setPlatformFees(p.id, { ...cur, freteMedio: Number(e.target.value) || 0 })
-                    }
-                    placeholder={defaults ? `padrão: ${defaults.freteMedio.toFixed(2)}` : "0,00"}
-                    className="h-8 tabular text-sm"
-                  />
-                </div>
-              </div>
-              <div className="mt-1.5 flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-[11px] text-muted-foreground">
-                  Estimativa por devolução:{" "}
-                  <span className="font-medium text-foreground">
-                    R$ {((cur.taxaFixa || 0) + (cur.freteMedio || 0)).toFixed(2)}
-                  </span>
-                  {aprendendo && (
-                    <span className="ml-2 italic">
-                      coletando amostras de frete reais nas perdas…
-                    </span>
-                  )}
-                </p>
-                <div className="flex items-center gap-2">
-                  {samplesArr.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm("Zerar as amostras de frete coletadas para esta plataforma?"))
-                          resetFreightSamples(p.id);
-                      }}
-                      className="text-[11px] text-muted-foreground hover:text-foreground underline"
-                    >
-                      zerar amostras
-                    </button>
-                  )}
-                  {isCustom && (
-                    <button
-                      type="button"
-                      onClick={() => clearPlatformFees(p.id)}
-                      className="text-[11px] text-muted-foreground hover:text-foreground underline"
-                    >
-                      voltar pro padrão
-                    </button>
-                  )}
-                </div>
-              </div>
-            </li>
-          );
-        })}
+        {plataformas.map((p) => (
+          <li key={p.id} className="flex items-center justify-between px-4 py-2.5">
+            <p className="text-sm font-medium">{p.nome}</p>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={() => {
+                if (confirm(`Excluir "${p.nome}"? Os vínculos serão removidos.`))
+                  deletePlataforma(p.id);
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </li>
+        ))}
+        {plataformas.length === 0 && (
+          <li className="px-4 py-3 text-xs text-muted-foreground text-center">
+            Nenhuma plataforma cadastrada.
+          </li>
+        )}
       </ul>
     </div>
   );
