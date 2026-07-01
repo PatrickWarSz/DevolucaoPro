@@ -15,7 +15,7 @@ import { fmtBRL, fmtDateTime, isToday, statusLabel, valorTotal, quantidadeTotal,
 import { advanceOnEnter } from "@/lib/focus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
-import { estimarCustoDevolucao, addFreightSample, precisaAmostraFrete, getFreightSampleCount, FREIGHT_SAMPLE_THRESHOLD } from "@/lib/platformConfig";
+
 
 type ItemForm = Omit<DevolucaoItem, "id"> & { id: string };
 
@@ -334,21 +334,14 @@ export default function Registrar() {
         return;
       }
     }
-    // NOVO MODELO: valorRecuperado guarda o CUSTO REAL da devolução para loss,
-    // ou o VALOR EM RISCO para disputas. Para resolvidas SEM disputa, não há
-    // custo financeiro a registrar — entram só como contagem operacional.
+    // valorRecuperado guarda:
+    //   - Custo REAL informado pelo operador em perdas confirmadas.
+    //   - Valor em disputa (opcional) informado pelo operador em disputas.
+    // Para "Resolvida" e "Aguardando valor" não há valor financeiro a registrar aqui.
     const custoInformado = Number(form.valorPerda) || 0;
-    const plataformaNomeAtual = plataformas.find((p) => p.id === form.plataformaId)?.nome;
     let valorRecuperado: number | undefined = undefined;
-    if (form.status === "loss") {
-      // Se o operador informou, usa. Se não (já aprendemos amostras suficientes),
-      // aplica a estimativa automática da plataforma.
-      if (custoInformado > 0) {
-        valorRecuperado = custoInformado;
-      } else {
-        const est = estimarCustoDevolucao(form.plataformaId, plataformaNomeAtual);
-        if (est !== null) valorRecuperado = est;
-      }
+    if (form.status === "loss" && custoInformado > 0) {
+      valorRecuperado = custoInformado;
     } else if (form.status === "dispute" && custoInformado > 0) {
       valorRecuperado = custoInformado;
     }
