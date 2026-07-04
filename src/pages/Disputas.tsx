@@ -115,21 +115,19 @@ export default function Disputas() {
       toast({ title: "Valor inválido", variant: "destructive" });
       return;
     }
-    const total = valorTotal(resolucao.devolucao);
+    const emDisputa = Number(resolucao.devolucao.valorRecuperado ?? 0);
 
     if (resolucao.kind === "win") {
       setStatus(resolucao.devolucao.id, "resolved", v);
       toast({
         title: "Disputa ganha 🏆",
-        description: `${fmtBRL(v)} recuperados${v !== total ? ` (de ${fmtBRL(total)})` : ""}.`,
+        description: `${fmtBRL(v)} recuperados${emDisputa > 0 && v !== emDisputa ? ` (em disputa: ${fmtBRL(emDisputa)})` : ""}.`,
       });
     } else {
-      // Para perda, gravamos o valor final como valorRecuperado também
-      // (representa o valor "considerado" — útil quando plataforma aplica taxas).
       setStatus(resolucao.devolucao.id, "loss", v);
       toast({
         title: "Perda registrada",
-        description: `${fmtBRL(v)} confirmados como perda${v !== total ? ` (bruto ${fmtBRL(total)})` : ""}.`,
+        description: `${fmtBRL(v)} confirmados como perda${emDisputa > 0 && v !== emDisputa ? ` (em disputa: ${fmtBRL(emDisputa)})` : ""}.`,
         variant: "destructive",
       });
     }
