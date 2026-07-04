@@ -95,7 +95,9 @@ export const motivoGeraPerda = (motivos: Motivo[], motivoId: string) => {
  * contam R$ 0 — assim o dashboard reflete só dinheiro real, não faturamento bruto.
  */
 export const valorEfetivo = (d: Devolucao, motivos?: Motivo[]) => {
-  if (d.status === "dispute") return 1;
+  // Em disputa: mostra o valor que o operador informou como "em risco".
+  // Se não informou nada ainda, retorna 0 (aparece como "—" no display).
+  if (d.status === "dispute") return Number(d.valorRecuperado ?? 0);
   if (d.status === "pending") return 0;
   if (d.status === "loss") return Number(d.valorRecuperado ?? 0);
   // resolved
