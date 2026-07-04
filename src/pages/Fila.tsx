@@ -74,7 +74,7 @@ export default function Fila() {
     const resolvidas = hoje.filter((d) => d.status === "resolved");
     const disputas = hoje.filter((d) => d.status === "dispute");
     const perdas = hoje.filter((d) => d.status === "loss");
-    const valorPerda = perdas.reduce((s, d) => s + valorTotal(d), 0);
+    const valorPerda = perdas.reduce((s, d) => s + valorEfetivo(d), 0);
     const itensTotal = hoje.reduce((s, d) => s + quantidadeTotal(d), 0);
     return {
       total: hoje.length,
