@@ -74,7 +74,7 @@ export default function Disputas() {
   );
 
   const stats = useMemo(() => {
-    const valorRisco = disputas.reduce((s, x) => s + valorTotal(x.d), 0);
+    const valorRisco = disputas.reduce((s, x) => s + Number(x.d.valorRecuperado ?? 0), 0);
     const vencidas = disputas.filter(
       (x) => x.prazo.status === "vencido" || x.prazo.status === "atrasado",
     );
