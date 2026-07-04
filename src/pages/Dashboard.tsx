@@ -738,6 +738,8 @@ export default function Dashboard() {
         )}
       </div>
 
+      <EditarDevolucaoDialog devolucao={editar} onClose={() => setEditar(null)} />
+
       <AlertDialog open={!!excluir} onOpenChange={(o) => !o && setExcluir(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
