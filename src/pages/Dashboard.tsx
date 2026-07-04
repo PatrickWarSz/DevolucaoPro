@@ -42,7 +42,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, TrendingDown, Activity, Percent, Package, Trash2, ChevronDown } from "lucide-react";
+import { Download, TrendingDown, Activity, Percent, Package, Trash2, ChevronDown, Pencil } from "lucide-react";
+import { EditarDevolucaoDialog } from "@/components/EditarDevolucaoDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import type { Devolucao } from "@/lib/types";
@@ -96,6 +97,7 @@ export default function Dashboard() {
   const [pagina, setPagina] = useState(1);
   const [topN, setTopN] = useState(10);
   const [excluir, setExcluir] = useState<Devolucao | null>(null);
+  const [editar, setEditar] = useState<Devolucao | null>(null);
   const PAGE = 12;
 
   const competencias = useMemo(() => {
@@ -642,7 +644,7 @@ export default function Dashboard() {
                 <TableHead className="text-right">Qtd</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[40px]"></TableHead>
+                <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -671,21 +673,37 @@ export default function Dashboard() {
                     <TableCell className="text-xs text-muted-foreground">{lookup(motivos, d.motivoId)}</TableCell>
                     <TableCell className="text-right tabular text-sm">{quantidadeTotal(d)}</TableCell>
                     <TableCell className="text-right tabular text-sm font-medium">
-                      {d.status === "dispute" ? "R$ 1,00" : d.status === "pending" ? "—" : fmtBRL(valorEfetivo(d, motivos))}
+                      {(() => {
+                        if (d.status === "pending") return "—";
+                        const v = valorEfetivo(d, motivos);
+                        if (v <= 0) return d.status === "dispute" ? "—" : fmtBRL(0);
+                        return fmtBRL(v);
+                      })()}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={d.status} />
                     </TableCell>
                     <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => setExcluir(d)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive-soft/40"
-                        aria-label="Excluir registro"
-                        title="Excluir registro"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => setEditar(d)}
+                          className="text-muted-foreground hover:text-primary p-1 rounded-md hover:bg-primary-soft/40"
+                          aria-label="Editar registro"
+                          title="Editar registro"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExcluir(d)}
+                          className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive-soft/40"
+                          aria-label="Excluir registro"
+                          title="Excluir registro"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -719,6 +737,8 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      <EditarDevolucaoDialog devolucao={editar} onClose={() => setEditar(null)} />
 
       <AlertDialog open={!!excluir} onOpenChange={(o) => !o && setExcluir(null)}>
         <AlertDialogContent>
