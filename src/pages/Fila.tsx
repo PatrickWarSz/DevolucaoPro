@@ -227,12 +227,12 @@ export default function Fila() {
                         </TableCell>
                         <TableCell className="text-right tabular text-sm">{qtd}</TableCell>
                         <TableCell className="text-right tabular text-sm font-medium">
-                          {d.status === "dispute" ? "R$ 1,00" : d.status === "pending" ? "—" : fmtBRL(valorEfetivo(d))}
-                          {d.status !== "dispute" && d.status !== "pending" && total !== valorEfetivo(d) && (
-                            <div className="text-[10px] text-muted-foreground">
-                              bruto {fmtBRL(total)}
-                            </div>
-                          )}
+                          {(() => {
+                            if (d.status === "pending") return "—";
+                            const v = valorEfetivo(d);
+                            if (v <= 0) return d.status === "dispute" ? "—" : fmtBRL(0);
+                            return fmtBRL(v);
+                          })()}
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={d.status} />
