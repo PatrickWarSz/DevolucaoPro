@@ -684,15 +684,26 @@ export default function Dashboard() {
                       <StatusBadge status={d.status} />
                     </TableCell>
                     <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => setExcluir(d)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive-soft/40"
-                        aria-label="Excluir registro"
-                        title="Excluir registro"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => setEditar(d)}
+                          className="text-muted-foreground hover:text-primary p-1 rounded-md hover:bg-primary-soft/40"
+                          aria-label="Editar registro"
+                          title="Editar registro"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExcluir(d)}
+                          className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive-soft/40"
+                          aria-label="Excluir registro"
+                          title="Excluir registro"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
