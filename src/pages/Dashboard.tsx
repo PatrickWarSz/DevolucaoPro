@@ -97,6 +97,7 @@ export default function Dashboard() {
   const [pagina, setPagina] = useState(1);
   const [topN, setTopN] = useState(10);
   const [excluir, setExcluir] = useState<Devolucao | null>(null);
+  const [editar, setEditar] = useState<Devolucao | null>(null);
   const PAGE = 12;
 
   const competencias = useMemo(() => {
