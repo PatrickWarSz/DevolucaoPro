@@ -220,6 +220,59 @@ export async function updateDevolucaoStatus(
   if (error) throw error;
 }
 
+/**
+ * Edição completa de uma devolução: header + itens.
+ * Faz replace dos itens (delete+insert) para simplificar a sincronização
+ * quando o operador adiciona/remove/edita linhas no diálogo de edição.
+ */
+export async function updateDevolucaoFull(
+  wsId: string,
+  id: string,
+  d: Omit<Devolucao, "id">,
+): Promise<void> {
+  const { error: errCab } = await supabase
+    .from("dev_devolucoes")
+    .update({
+      empresa_id:       d.empresaId    || null,
+      plataforma_id:    d.plataformaId || null,
+      motivo_id:        d.motivoId     || null,
+      tipo_defeito_id:  d.tipoDefeitoId ?? null,
+      pedido_id:        d.pedidoId,
+      devolucao_id:     d.devolucaoId,
+      competencia:      d.competencia,
+      criado_em:        d.createdAt,
+      status:           d.status,
+      valor_recuperado: d.valorRecuperado ?? null,
+      notas:            d.notas ?? null,
+    })
+    .eq("id", id);
+  if (errCab) throw errCab;
+
+  // Replace itens: apaga todos os existentes e reinsere.
+  const { error: errDel } = await supabase
+    .from("dev_devolucao_itens")
+    .delete()
+    .eq("devolucao_id", id);
+  if (errDel) throw errDel;
+
+  if (d.itens.length > 0) {
+    const { error: errIns } = await supabase.from("dev_devolucao_itens").insert(
+      d.itens.map((it) => ({
+        id:           crypto.randomUUID(),
+        workspace_id: wsId,
+        devolucao_id: id,
+        modelo_id:    it.modeloId  || null,
+        peca_id:      it.pecaId    || null,
+        cor:          it.cor,
+        tamanho:      it.tamanho,
+        quantidade:   it.quantidade,
+        valor:        it.valor,
+      })),
+    );
+    if (errIns) throw errIns;
+  }
+}
+
 export async function softDeleteDevolucao(id: string): Promise<void> {
   const { error } = await supabase
     .from("dev_devolucoes")
