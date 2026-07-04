@@ -96,7 +96,11 @@ export default function Disputas() {
 
   const abrirResolucao = (d: Devolucao, kind: ResolucaoKind) => {
     setResolucao({ devolucao: d, kind });
-    setValorFinal(String(valorTotal(d)));
+    // Prefill com o valor em disputa informado no registro (se houver).
+    // Esse é o valor que o operador colocou em risco — é o que deve ser
+    // recuperado (ganho) ou perdido, e não o bruto do pedido.
+    const emDisputa = Number(d.valorRecuperado ?? 0);
+    setValorFinal(emDisputa > 0 ? String(emDisputa) : "");
   };
 
   const fecharResolucao = () => {
