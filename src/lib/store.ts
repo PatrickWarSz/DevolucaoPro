@@ -253,12 +253,26 @@ export const useStore = create<State & Actions>()((set, get) => {
       return novo;
     },
 
-    updateDevolucao: (id, patch) =>
+    updateDevolucao: (id, patch) => {
+      const { _workspaceId } = get();
+      let atualizada: Devolucao | undefined;
       set((s) => ({
-        devolucoes: s.devolucoes.map((d) =>
-          d.id === id ? { ...d, ...patch } : d
-        ),
-      })),
+        devolucoes: s.devolucoes.map((d) => {
+          if (d.id !== id) return d;
+          const novo = { ...d, ...patch };
+          // Se o operador adicionar novos itens sem id, gera IDs locais.
+          novo.itens = (patch.itens ?? d.itens).map((it) =>
+            it.id ? it : { ...it, id: uid() },
+          );
+          atualizada = novo;
+          return novo;
+        }),
+      }));
+      if (_workspaceId && atualizada) {
+        const { id: _omit, ...rest } = atualizada;
+        _syncGuard(() => db.updateDevolucaoFull(_workspaceId, id, rest));
+      }
+    },
 
     deleteDevolucao: (id) => {
       set((s) => ({ devolucoes: s.devolucoes.filter((d) => d.id !== id) }));
