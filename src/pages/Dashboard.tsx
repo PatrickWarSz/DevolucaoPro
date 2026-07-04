@@ -644,7 +644,7 @@ export default function Dashboard() {
                 <TableHead className="text-right">Qtd</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[40px]"></TableHead>
+                <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
