@@ -340,7 +340,9 @@ export default function Disputas() {
               />
               {resolucao && (
                 <p className="text-xs text-muted-foreground">
-                  Valor bruto da devolução: {fmtBRL(valorTotal(resolucao.devolucao))}
+                  {Number(resolucao.devolucao.valorRecuperado ?? 0) > 0
+                    ? `Valor em disputa informado: ${fmtBRL(Number(resolucao.devolucao.valorRecuperado))}`
+                    : "Nenhum valor em disputa foi informado no registro."}
                 </p>
               )}
             </div>
