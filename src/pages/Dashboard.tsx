@@ -671,7 +671,12 @@ export default function Dashboard() {
                     <TableCell className="text-xs text-muted-foreground">{lookup(motivos, d.motivoId)}</TableCell>
                     <TableCell className="text-right tabular text-sm">{quantidadeTotal(d)}</TableCell>
                     <TableCell className="text-right tabular text-sm font-medium">
-                      {d.status === "dispute" ? "R$ 1,00" : d.status === "pending" ? "—" : fmtBRL(valorEfetivo(d, motivos))}
+                      {(() => {
+                        if (d.status === "pending") return "—";
+                        const v = valorEfetivo(d, motivos);
+                        if (v <= 0) return d.status === "dispute" ? "—" : fmtBRL(0);
+                        return fmtBRL(v);
+                      })()}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={d.status} />
