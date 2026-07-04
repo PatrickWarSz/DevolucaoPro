@@ -218,7 +218,7 @@ export default function Disputas() {
         ) : (
           <ul className="divide-y divide-border">
             {disputas.map(({ d, prazo }) => {
-              const total = valorTotal(d);
+              const emDisputa = Number(d.valorRecuperado ?? 0);
               const qtd = quantidadeTotal(d);
               const principal = d.itens[0];
               const restante = d.itens.length - 1;
@@ -248,8 +248,11 @@ export default function Disputas() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-warning tabular min-w-[80px] text-right">
-                        {fmtBRL(total)}
+                      <span
+                        className="text-sm font-semibold text-warning tabular min-w-[80px] text-right"
+                        title={emDisputa > 0 ? "Valor em disputa informado" : "Valor em disputa não informado"}
+                      >
+                        {emDisputa > 0 ? fmtBRL(emDisputa) : "—"}
                       </span>
                       <Button
                         size="sm"
