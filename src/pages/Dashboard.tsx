@@ -77,6 +77,11 @@ const PIE_COLORS = [
 
 const ALL = "__all__";
 
+const currentCompetencia = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
 export default function Dashboard() {
   const devolucoes = useStore((s) => s.devolucoes);
   const deleteDevolucao = useStore((s) => s.deleteDevolucao);
@@ -92,7 +97,8 @@ export default function Dashboard() {
   const [fPlataforma, setFPlataforma] = useState(ALL);
   const [fStatus, setFStatus] = useState(ALL);
   const [fMotivo, setFMotivo] = useState(ALL);
-  const [fCompetencia, setFCompetencia] = useState(ALL);
+  // Competência default = mês atual (usuário troca se quiser ver outro período).
+  const [fCompetencia, setFCompetencia] = useState<string>(currentCompetencia());
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
   const [topN, setTopN] = useState(10);
