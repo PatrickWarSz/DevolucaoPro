@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { ReturnStatus, DevolucaoItem, PedidoACaminho } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, AlertCircle, XCircle, Clock, Trash2, Sparkles, Plus, Package, Truck, X } from "lucide-react";
-import { fmtBRL, fmtDateTime, isToday, statusLabel, valorTotal, quantidadeTotal, motivoGeraPerda } from "@/lib/format";
+import { fmtBRL, fmtDateTime, isToday, statusLabel, valorTotal, valorEfetivo, quantidadeTotal, motivoGeraPerda } from "@/lib/format";
 import { advanceOnEnter } from "@/lib/focus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
@@ -917,6 +917,7 @@ export default function Registrar() {
               <ul className="divide-y divide-border">
                 {filaHoje.map((d) => {
                   const total = valorTotal(d);
+                  const efetivo = valorEfetivo(d, motivos);
                   const qtd = quantidadeTotal(d);
                   const primeiroItem = d.itens[0];
                   const restante = d.itens.length - 1;
@@ -955,7 +956,13 @@ export default function Registrar() {
                                 : "text-foreground",
                           )}
                         >
-                          {d.status === "dispute" ? "R$ 1,00" : d.status === "pending" ? "—" : fmtBRL(total)}
+                          {d.status === "pending"
+                            ? "—"
+                            : d.status === "loss"
+                              ? efetivo > 0 ? fmtBRL(efetivo) : fmtBRL(0)
+                              : d.status === "dispute"
+                                ? efetivo > 0 ? fmtBRL(efetivo) : "—"
+                                : fmtBRL(total)}
                         </span>
                         <button
                           onClick={() => deleteDevolucao(d.id)}

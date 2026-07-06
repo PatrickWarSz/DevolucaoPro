@@ -77,6 +77,11 @@ const PIE_COLORS = [
 
 const ALL = "__all__";
 
+const currentCompetencia = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
 export default function Dashboard() {
   const devolucoes = useStore((s) => s.devolucoes);
   const deleteDevolucao = useStore((s) => s.deleteDevolucao);
@@ -92,7 +97,8 @@ export default function Dashboard() {
   const [fPlataforma, setFPlataforma] = useState(ALL);
   const [fStatus, setFStatus] = useState(ALL);
   const [fMotivo, setFMotivo] = useState(ALL);
-  const [fCompetencia, setFCompetencia] = useState(ALL);
+  // Competência default = mês atual (usuário troca se quiser ver outro período).
+  const [fCompetencia, setFCompetencia] = useState<string>(currentCompetencia());
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
   const [topN, setTopN] = useState(10);
@@ -140,16 +146,32 @@ export default function Dashboard() {
     const valorRecuperado = comPerda
       .filter((d) => d.status === "resolved")
       .reduce((s, d) => s + valorEfetivo(d, motivos), 0);
-    const disputasAbertas = filtradas.filter((d) => d.status === "dispute").length;
-    // "Em risco" nas disputas = valor informado pelo operador, OU estimativa
-    // automática (taxa fixa + frete médio) baseada na plataforma.
-    const valorEmDisputa = comPerda
-      .filter((d) => d.status === "dispute")
-      .reduce((s, d) => {
-        if (d.valorRecuperado && d.valorRecuperado > 0) return s + d.valorRecuperado;
-        const nome = lookup(plataformas, d.plataformaId);
-        return s + (estimarCustoDevolucao(d.plataformaId, nome) ?? 0);
-      }, 0);
+
+    // "Disputas em aberto" muda de semântica conforme a competência selecionada:
+    // • Mês atual (ou "todos") → disputas ainda em andamento (status=dispute)
+    //   com o risco vivo (valor informado ou estimado).
+    // • Mês passado → total FIXO de disputas que aconteceram naquele mês
+    //   (flag foiDisputa) e o valor que esteve em risco. Isso conversa com
+    //   a taxa de recuperação, que também é histórica.
+    const mesAtual = currentCompetencia();
+    const historicoFixo = fCompetencia !== ALL && fCompetencia !== mesAtual;
+
+    let disputasAbertas: number;
+    let valorEmDisputa: number;
+    if (historicoFixo) {
+      const historico = filtradas.filter((d) => d.foiDisputa || d.status === "dispute");
+      disputasAbertas = historico.length;
+      valorEmDisputa = historico.reduce((s, d) => s + Number(d.valorRecuperado ?? 0), 0);
+    } else {
+      disputasAbertas = filtradas.filter((d) => d.status === "dispute").length;
+      valorEmDisputa = comPerda
+        .filter((d) => d.status === "dispute")
+        .reduce((s, d) => {
+          if (d.valorRecuperado && d.valorRecuperado > 0) return s + d.valorRecuperado;
+          const nome = lookup(plataformas, d.plataformaId);
+          return s + (estimarCustoDevolucao(d.plataformaId, nome) ?? 0);
+        }, 0);
+    }
 
     const totalAvaliado = valorPerda + valorRecuperado;
     const taxaRecuperacao = totalAvaliado > 0 ? (valorRecuperado / totalAvaliado) * 100 : 0;
@@ -163,22 +185,36 @@ export default function Dashboard() {
       valorEmDisputa,
       taxaRecuperacao,
       semPerda,
+      historicoFixo,
     };
-  }, [filtradas, motivos, plataformas]);
+  }, [filtradas, motivos, plataformas, fCompetencia]);
 
+
+  // Evolução mensal ignora o filtro de competência (senão o gráfico de 6 meses
+  // colapsa para um único mês quando o usuário está olhando o mês atual).
+  // Demais filtros continuam valendo.
+  const baseEvolucao = useMemo(() => {
+    return devolucoes.filter((d) => {
+      if (fEmpresa !== ALL && d.empresaId !== fEmpresa) return false;
+      if (fPlataforma !== ALL && d.plataformaId !== fPlataforma) return false;
+      if (fStatus !== ALL && d.status !== fStatus) return false;
+      if (fMotivo !== ALL && d.motivoId !== fMotivo) return false;
+      return true;
+    });
+  }, [devolucoes, fEmpresa, fPlataforma, fStatus, fMotivo]);
 
   const evolucaoMensal = useMemo(() => {
     const map = new Map<string, { mes: string; resolvidas: number; perdas: number; disputasQtd: number }>();
-    filtradas.forEach((d) => {
+    baseEvolucao.forEach((d) => {
       const key = d.competencia;
       const cur = map.get(key) ?? { mes: key, resolvidas: 0, perdas: 0, disputasQtd: 0 };
       const v = valorEfetivo(d, motivos);
       if (d.status === "resolved") cur.resolvidas += v;
       else if (d.status === "loss") cur.perdas += v;
-      // Disputas é histórico fixo: conta toda devolução que passou por status
+      // Disputas = histórico fixo: conta toda devolução que passou por status
       // "Em disputa" em algum momento (mesmo já resolvida/perdida).
       // "Aguardando valor" NÃO entra aqui.
-      if (d.foiDisputa) cur.disputasQtd += 1;
+      if (d.foiDisputa || d.status === "dispute") cur.disputasQtd += 1;
       map.set(key, cur);
     });
     return Array.from(map.values())
@@ -188,7 +224,7 @@ export default function Dashboard() {
         ...m,
         label: m.mes.split("-").reverse().join("/"),
       }));
-  }, [filtradas, motivos]);
+  }, [baseEvolucao, motivos]);
 
   const porEmpresa = useMemo(() => {
     const map = new Map<string, number>();
@@ -453,10 +489,13 @@ export default function Dashboard() {
           sub="frete + taxas perdidas"
         />
         <KpiCard
-          label="Disputas em aberto"
+          label={stats.historicoFixo ? "Disputas no mês" : "Disputas em aberto"}
           value={stats.disputasAbertas}
           tone="warning"
-          sub={fmtBRL(stats.valorEmDisputa) + " estimado em risco"}
+          sub={
+            fmtBRL(stats.valorEmDisputa) +
+            (stats.historicoFixo ? " esteve em risco" : " estimado em risco")
+          }
         />
         <KpiCard
           label="Taxa de recuperação"

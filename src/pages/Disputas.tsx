@@ -18,6 +18,7 @@ import { ShieldAlert, Calendar, Trophy, X, Package, Clock, AlertTriangle, Trash2
 import { fmtBRL, fmtDate, daysBetween, valorTotal, quantidadeTotal } from "@/lib/format";
 import { avaliarPrazo, prazoStatusOrder, type PrazoInfo, type PrazoStatus } from "@/lib/disputaPrazo";
 import { EmptyState } from "@/components/EmptyState";
+import { StatusBadge } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -239,6 +240,7 @@ export default function Disputas() {
                             +{restante} {restante === 1 ? "item" : "itens"}
                           </span>
                         )}
+                        <StatusBadge status={d.status} />
                         <PrazoBadge prazo={prazo} />
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">
