@@ -146,16 +146,32 @@ export default function Dashboard() {
     const valorRecuperado = comPerda
       .filter((d) => d.status === "resolved")
       .reduce((s, d) => s + valorEfetivo(d, motivos), 0);
-    const disputasAbertas = filtradas.filter((d) => d.status === "dispute").length;
-    // "Em risco" nas disputas = valor informado pelo operador, OU estimativa
-    // automática (taxa fixa + frete médio) baseada na plataforma.
-    const valorEmDisputa = comPerda
-      .filter((d) => d.status === "dispute")
-      .reduce((s, d) => {
-        if (d.valorRecuperado && d.valorRecuperado > 0) return s + d.valorRecuperado;
-        const nome = lookup(plataformas, d.plataformaId);
-        return s + (estimarCustoDevolucao(d.plataformaId, nome) ?? 0);
-      }, 0);
+
+    // "Disputas em aberto" muda de semântica conforme a competência selecionada:
+    // • Mês atual (ou "todos") → disputas ainda em andamento (status=dispute)
+    //   com o risco vivo (valor informado ou estimado).
+    // • Mês passado → total FIXO de disputas que aconteceram naquele mês
+    //   (flag foiDisputa) e o valor que esteve em risco. Isso conversa com
+    //   a taxa de recuperação, que também é histórica.
+    const mesAtual = currentCompetencia();
+    const historicoFixo = fCompetencia !== ALL && fCompetencia !== mesAtual;
+
+    let disputasAbertas: number;
+    let valorEmDisputa: number;
+    if (historicoFixo) {
+      const historico = filtradas.filter((d) => d.foiDisputa || d.status === "dispute");
+      disputasAbertas = historico.length;
+      valorEmDisputa = historico.reduce((s, d) => s + Number(d.valorRecuperado ?? 0), 0);
+    } else {
+      disputasAbertas = filtradas.filter((d) => d.status === "dispute").length;
+      valorEmDisputa = comPerda
+        .filter((d) => d.status === "dispute")
+        .reduce((s, d) => {
+          if (d.valorRecuperado && d.valorRecuperado > 0) return s + d.valorRecuperado;
+          const nome = lookup(plataformas, d.plataformaId);
+          return s + (estimarCustoDevolucao(d.plataformaId, nome) ?? 0);
+        }, 0);
+    }
 
     const totalAvaliado = valorPerda + valorRecuperado;
     const taxaRecuperacao = totalAvaliado > 0 ? (valorRecuperado / totalAvaliado) * 100 : 0;
@@ -169,8 +185,9 @@ export default function Dashboard() {
       valorEmDisputa,
       taxaRecuperacao,
       semPerda,
+      historicoFixo,
     };
-  }, [filtradas, motivos, plataformas]);
+  }, [filtradas, motivos, plataformas, fCompetencia]);
 
 
   const evolucaoMensal = useMemo(() => {
