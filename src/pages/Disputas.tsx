@@ -240,6 +240,7 @@ export default function Disputas() {
                             +{restante} {restante === 1 ? "item" : "itens"}
                           </span>
                         )}
+                        <StatusBadge status={d.status} />
                         <PrazoBadge prazo={prazo} />
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">
