@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { ReturnStatus, DevolucaoItem, PedidoACaminho } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, AlertCircle, XCircle, Clock, Trash2, Sparkles, Plus, Package, Truck, X } from "lucide-react";
-import { fmtBRL, fmtDateTime, isToday, statusLabel, valorTotal, quantidadeTotal, motivoGeraPerda } from "@/lib/format";
+import { fmtBRL, fmtDateTime, isToday, statusLabel, valorTotal, valorEfetivo, quantidadeTotal, motivoGeraPerda } from "@/lib/format";
 import { advanceOnEnter } from "@/lib/focus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
