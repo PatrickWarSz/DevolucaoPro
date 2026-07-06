@@ -917,6 +917,7 @@ export default function Registrar() {
               <ul className="divide-y divide-border">
                 {filaHoje.map((d) => {
                   const total = valorTotal(d);
+                  const efetivo = valorEfetivo(d, motivos);
                   const qtd = quantidadeTotal(d);
                   const primeiroItem = d.itens[0];
                   const restante = d.itens.length - 1;
