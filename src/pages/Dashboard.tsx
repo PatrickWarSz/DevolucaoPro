@@ -190,15 +190,28 @@ export default function Dashboard() {
   }, [filtradas, motivos, plataformas, fCompetencia]);
 
 
+  // Evolução mensal ignora o filtro de competência (senão o gráfico de 6 meses
+  // colapsa para um único mês quando o usuário está olhando o mês atual).
+  // Demais filtros continuam valendo.
+  const baseEvolucao = useMemo(() => {
+    return devolucoes.filter((d) => {
+      if (fEmpresa !== ALL && d.empresaId !== fEmpresa) return false;
+      if (fPlataforma !== ALL && d.plataformaId !== fPlataforma) return false;
+      if (fStatus !== ALL && d.status !== fStatus) return false;
+      if (fMotivo !== ALL && d.motivoId !== fMotivo) return false;
+      return true;
+    });
+  }, [devolucoes, fEmpresa, fPlataforma, fStatus, fMotivo]);
+
   const evolucaoMensal = useMemo(() => {
     const map = new Map<string, { mes: string; resolvidas: number; perdas: number; disputasQtd: number }>();
-    filtradas.forEach((d) => {
+    baseEvolucao.forEach((d) => {
       const key = d.competencia;
       const cur = map.get(key) ?? { mes: key, resolvidas: 0, perdas: 0, disputasQtd: 0 };
       const v = valorEfetivo(d, motivos);
       if (d.status === "resolved") cur.resolvidas += v;
       else if (d.status === "loss") cur.perdas += v;
-      // Disputas é histórico fixo: conta toda devolução que passou por status
+      // Disputas = histórico fixo: conta toda devolução que passou por status
       // "Em disputa" em algum momento (mesmo já resolvida/perdida).
       // "Aguardando valor" NÃO entra aqui.
       if (d.foiDisputa || d.status === "dispute") cur.disputasQtd += 1;
@@ -211,7 +224,7 @@ export default function Dashboard() {
         ...m,
         label: m.mes.split("-").reverse().join("/"),
       }));
-  }, [filtradas, motivos]);
+  }, [baseEvolucao, motivos]);
 
   const porEmpresa = useMemo(() => {
     const map = new Map<string, number>();
