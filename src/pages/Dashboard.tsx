@@ -201,7 +201,7 @@ export default function Dashboard() {
       // Disputas é histórico fixo: conta toda devolução que passou por status
       // "Em disputa" em algum momento (mesmo já resolvida/perdida).
       // "Aguardando valor" NÃO entra aqui.
-      if (d.foiDisputa) cur.disputasQtd += 1;
+      if (d.foiDisputa || d.status === "dispute") cur.disputasQtd += 1;
       map.set(key, cur);
     });
     return Array.from(map.values())
