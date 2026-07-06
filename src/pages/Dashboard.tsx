@@ -489,10 +489,13 @@ export default function Dashboard() {
           sub="frete + taxas perdidas"
         />
         <KpiCard
-          label="Disputas em aberto"
+          label={stats.historicoFixo ? "Disputas no mês" : "Disputas em aberto"}
           value={stats.disputasAbertas}
           tone="warning"
-          sub={fmtBRL(stats.valorEmDisputa) + " estimado em risco"}
+          sub={
+            fmtBRL(stats.valorEmDisputa) +
+            (stats.historicoFixo ? " esteve em risco" : " estimado em risco")
+          }
         />
         <KpiCard
           label="Taxa de recuperação"
