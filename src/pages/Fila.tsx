@@ -226,7 +226,10 @@ export default function Fila() {
                           {lookup(motivos, d.motivoId)}
                         </TableCell>
                         <TableCell className="text-right tabular text-sm">{qtd}</TableCell>
-                        <TableCell className="text-right tabular text-sm font-medium">
+                        <TableCell className={cn(
+                          "text-right tabular text-sm font-medium",
+                          d.status === "loss" && "text-destructive",
+                        )}>
                           {(() => {
                             if (d.status === "pending") return "—";
                             const v = valorEfetivo(d);
