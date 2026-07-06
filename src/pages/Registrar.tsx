@@ -956,7 +956,13 @@ export default function Registrar() {
                                 : "text-foreground",
                           )}
                         >
-                          {d.status === "dispute" ? "R$ 1,00" : d.status === "pending" ? "—" : fmtBRL(total)}
+                          {d.status === "pending"
+                            ? "—"
+                            : d.status === "loss"
+                              ? efetivo > 0 ? fmtBRL(efetivo) : fmtBRL(0)
+                              : d.status === "dispute"
+                                ? efetivo > 0 ? fmtBRL(efetivo) : "—"
+                                : fmtBRL(total)}
                         </span>
                         <button
                           onClick={() => deleteDevolucao(d.id)}
