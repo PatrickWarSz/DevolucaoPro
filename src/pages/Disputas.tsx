@@ -18,6 +18,7 @@ import { ShieldAlert, Calendar, Trophy, X, Package, Clock, AlertTriangle, Trash2
 import { fmtBRL, fmtDate, daysBetween, valorTotal, quantidadeTotal } from "@/lib/format";
 import { avaliarPrazo, prazoStatusOrder, type PrazoInfo, type PrazoStatus } from "@/lib/disputaPrazo";
 import { EmptyState } from "@/components/EmptyState";
+import { StatusBadge } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -63,7 +64,7 @@ export default function Disputas() {
   const disputas = useMemo(
     () =>
       devolucoes
-        .filter((d) => d.status === "dispute")
+        .filter((d) => d.status === "dispute" || d.status === "pending")
         .map((d) => ({ d, prazo: avaliarPrazo(d, plataformas) }))
         .sort((a, b) => {
           const so = prazoStatusOrder[a.prazo.status] - prazoStatusOrder[b.prazo.status];
@@ -74,7 +75,7 @@ export default function Disputas() {
   );
 
   const stats = useMemo(() => {
-    const valorRisco = disputas.reduce((s, x) => s + valorTotal(x.d), 0);
+    const valorRisco = disputas.reduce((s, x) => s + Number(x.d.valorRecuperado ?? 0), 0);
     const vencidas = disputas.filter(
       (x) => x.prazo.status === "vencido" || x.prazo.status === "atrasado",
     );
@@ -96,7 +97,11 @@ export default function Disputas() {
 
   const abrirResolucao = (d: Devolucao, kind: ResolucaoKind) => {
     setResolucao({ devolucao: d, kind });
-    setValorFinal(String(valorTotal(d)));
+    // Prefill com o valor em disputa informado no registro (se houver).
+    // Esse é o valor que o operador colocou em risco — é o que deve ser
+    // recuperado (ganho) ou perdido, e não o bruto do pedido.
+    const emDisputa = Number(d.valorRecuperado ?? 0);
+    setValorFinal(emDisputa > 0 ? String(emDisputa) : "");
   };
 
   const fecharResolucao = () => {
@@ -111,21 +116,19 @@ export default function Disputas() {
       toast({ title: "Valor inválido", variant: "destructive" });
       return;
     }
-    const total = valorTotal(resolucao.devolucao);
+    const emDisputa = Number(resolucao.devolucao.valorRecuperado ?? 0);
 
     if (resolucao.kind === "win") {
       setStatus(resolucao.devolucao.id, "resolved", v);
       toast({
         title: "Disputa ganha 🏆",
-        description: `${fmtBRL(v)} recuperados${v !== total ? ` (de ${fmtBRL(total)})` : ""}.`,
+        description: `${fmtBRL(v)} recuperados${emDisputa > 0 && v !== emDisputa ? ` (em disputa: ${fmtBRL(emDisputa)})` : ""}.`,
       });
     } else {
-      // Para perda, gravamos o valor final como valorRecuperado também
-      // (representa o valor "considerado" — útil quando plataforma aplica taxas).
       setStatus(resolucao.devolucao.id, "loss", v);
       toast({
         title: "Perda registrada",
-        description: `${fmtBRL(v)} confirmados como perda${v !== total ? ` (bruto ${fmtBRL(total)})` : ""}.`,
+        description: `${fmtBRL(v)} confirmados como perda${emDisputa > 0 && v !== emDisputa ? ` (em disputa: ${fmtBRL(emDisputa)})` : ""}.`,
         variant: "destructive",
       });
     }
@@ -135,8 +138,8 @@ export default function Disputas() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Disputas em aberto"
-        description="Casos pendentes ordenados por prazo. Resolva ou confirme perda quando a plataforma der o resultado."
+        title="Disputas e pendências"
+        description="Disputas abertas + devoluções aguardando o valor final da plataforma. Marque Ganhei ou Perdi quando a resolução chegar."
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -216,7 +219,7 @@ export default function Disputas() {
         ) : (
           <ul className="divide-y divide-border">
             {disputas.map(({ d, prazo }) => {
-              const total = valorTotal(d);
+              const emDisputa = Number(d.valorRecuperado ?? 0);
               const qtd = quantidadeTotal(d);
               const principal = d.itens[0];
               const restante = d.itens.length - 1;
@@ -237,6 +240,7 @@ export default function Disputas() {
                             +{restante} {restante === 1 ? "item" : "itens"}
                           </span>
                         )}
+                        <StatusBadge status={d.status} />
                         <PrazoBadge prazo={prazo} />
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">
@@ -246,8 +250,11 @@ export default function Disputas() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-warning tabular min-w-[80px] text-right">
-                        {fmtBRL(total)}
+                      <span
+                        className="text-sm font-semibold text-warning tabular min-w-[80px] text-right"
+                        title={emDisputa > 0 ? "Valor em disputa informado" : "Valor em disputa não informado"}
+                      >
+                        {emDisputa > 0 ? fmtBRL(emDisputa) : "—"}
                       </span>
                       <Button
                         size="sm"
@@ -335,7 +342,9 @@ export default function Disputas() {
               />
               {resolucao && (
                 <p className="text-xs text-muted-foreground">
-                  Valor bruto da devolução: {fmtBRL(valorTotal(resolucao.devolucao))}
+                  {Number(resolucao.devolucao.valorRecuperado ?? 0) > 0
+                    ? `Valor em disputa informado: ${fmtBRL(Number(resolucao.devolucao.valorRecuperado))}`
+                    : "Nenhum valor em disputa foi informado no registro."}
                 </p>
               )}
             </div>

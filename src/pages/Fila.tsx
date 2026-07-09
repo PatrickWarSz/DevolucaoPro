@@ -74,7 +74,7 @@ export default function Fila() {
     const resolvidas = hoje.filter((d) => d.status === "resolved");
     const disputas = hoje.filter((d) => d.status === "dispute");
     const perdas = hoje.filter((d) => d.status === "loss");
-    const valorPerda = perdas.reduce((s, d) => s + valorTotal(d), 0);
+    const valorPerda = perdas.reduce((s, d) => s + valorEfetivo(d), 0);
     const itensTotal = hoje.reduce((s, d) => s + quantidadeTotal(d), 0);
     return {
       total: hoje.length,
@@ -226,13 +226,16 @@ export default function Fila() {
                           {lookup(motivos, d.motivoId)}
                         </TableCell>
                         <TableCell className="text-right tabular text-sm">{qtd}</TableCell>
-                        <TableCell className="text-right tabular text-sm font-medium">
-                          {d.status === "dispute" ? "R$ 1,00" : fmtBRL(valorEfetivo(d))}
-                          {d.status !== "dispute" && total !== valorEfetivo(d) && (
-                            <div className="text-[10px] text-muted-foreground">
-                              bruto {fmtBRL(total)}
-                            </div>
-                          )}
+                        <TableCell className={cn(
+                          "text-right tabular text-sm font-medium",
+                          d.status === "loss" && "text-destructive",
+                        )}>
+                          {(() => {
+                            if (d.status === "pending") return "—";
+                            const v = valorEfetivo(d);
+                            if (v <= 0) return d.status === "dispute" ? "—" : fmtBRL(0);
+                            return fmtBRL(v);
+                          })()}
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={d.status} />
@@ -245,7 +248,7 @@ export default function Fila() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {(["resolved", "dispute", "loss"] as ReturnStatus[]).map((s) => (
+                              {(["resolved", "dispute", "loss", "pending"] as ReturnStatus[]).map((s) => (
                                 <DropdownMenuItem
                                   key={s}
                                   disabled={s === d.status}

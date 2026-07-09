@@ -46,6 +46,7 @@ export const statusLabel: Record<Devolucao["status"], string> = {
   resolved: "Resolvida",
   dispute: "Em disputa",
   loss: "Perda confirmada",
+  pending: "Aguardando valor",
 };
 
 // ============= Helpers de itens =============
@@ -74,26 +75,34 @@ export const motivoGeraPerda = (motivos: Motivo[], motivoId: string) => {
 /**
  * Valor "efetivo" usado em relatórios financeiros.
  *
- * Regras:
- * - dispute: R$ 1 simbólico (independente do número de itens).
- * - resolved + motivo sem perda operacional: R$ 0 (devolução resolvida sem
- *   custo para o vendedor — não entra em "recuperado" nem em "perda").
- * - resolved + motivo com perda: valorRecuperado se houver, senão valorTotal.
- * - loss: valorTotal (perda confirmada).
+ * NOVO MODELO (jun/2026): o número que importa é o CUSTO REAL da devolução
+ * (frete ida + frete reverso + taxa fixa da plataforma), não o valor bruto
+ * do pedido. O bruto é neutro — o produto volta pro estoque e o dinheiro
+ * volta pro comprador. O que machuca o vendedor são as taxas.
  *
- * Passe a lista de motivos para aplicar a regra "sem perda". Sem ela, mantém
- * o comportamento legado.
+ * Por isso `valorRecuperado` agora guarda o "custo da devolução":
+ * - status=loss   → custo que saiu da carteira do vendedor
+ * - status=resolved (pós-disputa, motivo gera perda) → custo evitado / recuperado
+ *
+ * Regras:
+ * - dispute: R$ 1 simbólico (para aparecer na lista; valor real só após resolver).
+ * - pending: R$ 0 (aguardando a plataforma informar o valor).
+ * - resolved + motivo sem perda (arrependimento): R$ 0.
+ * - resolved + motivo com perda: valorRecuperado (custo evitado) ou 0 se não informado.
+ * - loss: valorRecuperado (custo real perdido) ou 0 se não informado.
+ *
+ * Atenção: NÃO há mais fallback para valorTotal. Devoluções sem custo informado
+ * contam R$ 0 — assim o dashboard reflete só dinheiro real, não faturamento bruto.
  */
 export const valorEfetivo = (d: Devolucao, motivos?: Motivo[]) => {
-  if (d.status === "dispute") return 1;
-  const total = valorTotal(d);
-  // Em perda, o usuário pode informar um valor real de perda menor que o total
-  // do pedido (ex.: reembolso parcial). Guardamos esse valor em `valorRecuperado`
-  // por simplicidade — semanticamente é o "valor da perda" quando status=loss.
-  if (d.status === "loss") return d.valorRecuperado ?? total;
+  // Em disputa: mostra o valor que o operador informou como "em risco".
+  // Se não informou nada ainda, retorna 0 (aparece como "—" no display).
+  if (d.status === "dispute") return Number(d.valorRecuperado ?? 0);
+  if (d.status === "pending") return 0;
+  if (d.status === "loss") return Number(d.valorRecuperado ?? 0);
   // resolved
   if (motivos && !motivoGeraPerda(motivos, d.motivoId)) return 0;
-  return d.valorRecuperado ?? total;
+  return Number(d.valorRecuperado ?? 0);
 };
 
 

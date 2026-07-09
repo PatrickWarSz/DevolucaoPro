@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import SubscriptionPanel from "@/components/settings/SubscriptionPanel";
 
+
 export default function Configuracoes() {
   const { toast } = useToast();
   void toast;
@@ -379,7 +380,9 @@ function PlataformasPanel() {
     <div className="rounded-lg border border-border bg-card shadow-xs">
       <div className="border-b border-border px-4 py-3">
         <h3 className="text-sm font-medium">Plataformas</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">Marketplaces disponíveis no sistema.</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Marketplaces disponíveis (Shopee, Mercado Livre, Shein, TikTok…). Adicione os que você opera para depois vincular às empresas.
+        </p>
       </div>
       <div className="flex items-end gap-2 border-b border-border bg-surface-muted/40 p-3">
         <div className="flex-1">
@@ -401,7 +404,7 @@ function PlataformasPanel() {
       <ul className="divide-y divide-border">
         {plataformas.map((p) => (
           <li key={p.id} className="flex items-center justify-between px-4 py-2.5">
-            <p className="text-sm">{p.nome}</p>
+            <p className="text-sm font-medium">{p.nome}</p>
             <Button
               variant="ghost"
               size="icon"
@@ -415,10 +418,16 @@ function PlataformasPanel() {
             </Button>
           </li>
         ))}
+        {plataformas.length === 0 && (
+          <li className="px-4 py-3 text-xs text-muted-foreground text-center">
+            Nenhuma plataforma cadastrada.
+          </li>
+        )}
       </ul>
     </div>
   );
 }
+
 
 function VinculosPanel() {
   const empresas = useStore((s) => s.empresas);

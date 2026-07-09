@@ -10,11 +10,12 @@ import { useStore, lookup } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import type { ReturnStatus, DevolucaoItem, PedidoACaminho } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, AlertCircle, XCircle, Trash2, Sparkles, Plus, Package, Truck, X } from "lucide-react";
-import { fmtBRL, fmtDateTime, isToday, statusLabel, valorTotal, quantidadeTotal, motivoGeraPerda } from "@/lib/format";
+import { CheckCircle2, AlertCircle, XCircle, Clock, Trash2, Sparkles, Plus, Package, Truck, X } from "lucide-react";
+import { fmtBRL, fmtDateTime, isToday, statusLabel, valorTotal, valorEfetivo, quantidadeTotal, motivoGeraPerda } from "@/lib/format";
 import { advanceOnEnter } from "@/lib/focus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
+
 
 type ItemForm = Omit<DevolucaoItem, "id"> & { id: string };
 
@@ -85,6 +86,12 @@ const statusOptions: { value: ReturnStatus; label: string; Icon: typeof CheckCir
     label: "Perda confirmada",
     Icon: XCircle,
     cls: "data-[active=true]:bg-destructive-soft data-[active=true]:border-destructive/40 data-[active=true]:text-destructive-soft-foreground",
+  },
+  {
+    value: "pending",
+    label: "Aguardando valor",
+    Icon: Clock,
+    cls: "data-[active=true]:bg-primary-soft data-[active=true]:border-primary/40 data-[active=true]:text-primary",
   },
 ];
 
@@ -170,7 +177,7 @@ export default function Registrar() {
     }));
 
   // Pedido obrigatório apenas em disputa/perda (precisa rastrear)
-  const pedidoObrigatorio = form.status === "dispute" || form.status === "loss";
+  const pedidoObrigatorio = form.status === "dispute" || form.status === "loss" || form.status === "pending";
 
   // Detecta se o motivo selecionado é "defeito" (case-insensitive, match parcial)
   const motivoSelecionado = motivos.find((m) => m.id === form.motivoId);
@@ -191,7 +198,7 @@ export default function Registrar() {
   if (!form.empresaId) camposFaltando.push("Empresa");
   if (!form.plataformaId) camposFaltando.push("Plataforma");
   if (!form.motivoId) camposFaltando.push("Motivo");
-  if (pedidoFaltando) camposFaltando.push("ID do Pedido (obrigatório em disputa/perda)");
+  if (pedidoFaltando) camposFaltando.push("ID do Pedido (obrigatório em disputa/perda/aguardando)");
   if (form.itens.length === 0 || itensValidos.length !== form.itens.length) {
     camposFaltando.push("Modelo e quantidade em todos os itens");
   }
@@ -207,7 +214,11 @@ export default function Registrar() {
     const q = pedidoBusca.trim().toLowerCase();
     if (!q) return [];
     return pedidosACaminho
-      .filter((p) => p.pedidoId.toLowerCase().includes(q))
+      .filter(
+        (p) =>
+          p.pedidoId.toLowerCase().includes(q) ||
+          (p.devolucaoId ?? "").toLowerCase().includes(q),
+      )
       .slice(0, 5);
   }, [pedidoBusca, pedidosACaminho]);
 
@@ -323,11 +334,19 @@ export default function Registrar() {
         return;
       }
     }
-    // Valor da perda (status loss). Se o usuário não informou, assume valor
-    // total do pedido. Se informou 0 explicitamente, respeita 0.
-    const perda = form.status === "loss"
-      ? (Number(form.valorPerda) || 0)
-      : undefined;
+    // valorRecuperado guarda:
+    //   - Custo REAL informado pelo operador em perdas confirmadas.
+    //   - Valor em disputa (opcional) informado pelo operador em disputas.
+    // Para "Resolvida" e "Aguardando valor" não há valor financeiro a registrar aqui.
+    const custoInformado = Number(form.valorPerda) || 0;
+    let valorRecuperado: number | undefined = undefined;
+    if (form.status === "loss" && custoInformado > 0) {
+      valorRecuperado = custoInformado;
+    } else if (form.status === "dispute" && custoInformado > 0) {
+      valorRecuperado = custoInformado;
+    }
+
+
     addDevolucao({
       empresaId: form.empresaId,
       plataformaId: form.plataformaId,
@@ -337,12 +356,9 @@ export default function Registrar() {
       motivoId: form.motivoId,
       tipoDefeitoId: exigeTipoDefeito ? form.tipoDefeitoId || undefined : undefined,
       status: form.status,
-      // valorRecuperado guarda: total recuperado (resolved) OU valor real da perda (loss)
-      valorRecuperado:
-        form.status === "resolved" ? totalCalc
-        : form.status === "loss"    ? perda
-        : undefined,
+      valorRecuperado,
       notas: form.notas.trim() || undefined,
+
 
       // Distribui o valor total uniformemente entre os itens — assim a soma
       // bate com o total do pedido e nenhum item fica "zerado" no display.
@@ -367,6 +383,7 @@ export default function Registrar() {
       title: "Devolução registrada",
       description: `${form.itens.length} ite${form.itens.length === 1 ? "m" : "ns"} · ${fmtBRL(totalCalc)} · ${statusLabel[form.status]}`,
     });
+
     if (andNext) {
       setForm({
         ...empty(),
@@ -442,7 +459,7 @@ export default function Registrar() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                   <Truck className="h-3.5 w-3.5" />
-                  Pedido a caminho? Cole o ID para puxar os dados
+                  Pedido a caminho? Cole o ID do pedido OU da devolução para puxar os dados
                   {pedidosACaminho.length > 0 && (
                     <span className="text-[10px] text-muted-foreground">
                       · {pedidosACaminho.length} aguardando
@@ -460,7 +477,7 @@ export default function Registrar() {
                         aplicarPedido(sugestoes[0]);
                       }
                     }}
-                    placeholder="Ex: SHP-991023 (digite ao menos 1 caractere)"
+                    placeholder="Ex: SHP-991023 ou DEV-00823"
                     className="font-mono text-sm"
                     data-skip-focus
                   />
@@ -476,7 +493,14 @@ export default function Registrar() {
                             className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between gap-3 border-b border-border last:border-0"
                           >
                             <div className="min-w-0">
-                              <div className="font-mono text-sm font-medium">{p.pedidoId}</div>
+                              <div className="font-mono text-sm font-medium">
+                                {p.pedidoId}
+                                {p.devolucaoId && (
+                                  <span className="ml-1.5 text-[11px] text-muted-foreground font-normal">
+                                    · {p.devolucaoId}
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-xs text-muted-foreground truncate">
                                 {lookup(empresas, p.empresaId)} · {lookup(plataformas, p.plataformaId)} ·{" "}
                                 {principal ? lookup(modelos, principal.modeloId) : "—"}
@@ -676,7 +700,7 @@ export default function Registrar() {
                 <p className="text-[11px] text-destructive mt-1 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3 shrink-0" />
                   Informe o ID do pedido para registrar uma devolução em{" "}
-                  {form.status === "dispute" ? "disputa" : "perda"}.
+                  {form.status === "dispute" ? "disputa" : form.status === "pending" ? "aguardando valor" : "perda"}.
                 </p>
               )}
             </Field>
@@ -694,9 +718,8 @@ export default function Registrar() {
 
             <div className="md:col-span-2">
               <Field
-                label="Valor total da devolução (R$)"
-                required
-                hint="valor único do pedido inteiro — independente de quantos itens"
+                label="Valor total do pedido (R$)"
+                hint="referência · faturamento bruto da venda — não entra como perda/recuperado no dashboard"
               >
                 <Input
                   ref={valorRef}
@@ -734,7 +757,7 @@ export default function Registrar() {
             <Label className="text-xs font-medium text-muted-foreground">
               Status da devolução
             </Label>
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {statusOptions.map((opt) => {
                 const active = form.status === opt.value;
                 const Icon = opt.Icon;
@@ -758,27 +781,40 @@ export default function Registrar() {
               })}
             </div>
 
-            {form.status === "loss" && (
-              <div className="mt-3 rounded-md border border-destructive/30 bg-destructive-soft/40 px-3 py-2.5">
-                <Label className="text-xs font-medium text-destructive-soft-foreground">
-                  Valor real da perda (R$) *
-                </Label>
-                <p className="text-[11px] text-destructive-soft-foreground/80 mt-0.5">
-                  Quanto a empresa perdeu de fato neste pedido (descontando reembolso parcial, taxas etc.).
-                  Geralmente é menor que o valor total do pedido.
-                </p>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  placeholder="0,00"
-                  value={form.valorPerda || ""}
-                  onChange={(e) => set("valorPerda", Number(e.target.value))}
-                  className="mt-2 tabular text-base font-medium bg-card"
-                />
-              </div>
-            )}
+            {(() => {
+              const isLoss = form.status === "loss";
+              const isDispute = form.status === "dispute";
+              // Resolvida / Aguardando valor não pedem input financeiro aqui.
+              if (!isLoss && !isDispute) return null;
+              const toneCls = isLoss
+                ? "border-destructive/30 bg-destructive-soft/40"
+                : "border-warning/30 bg-warning-soft/40";
+              const labelCls = isLoss
+                ? "text-destructive-soft-foreground"
+                : "text-warning-soft-foreground";
+              const titulo = isLoss ? "Valor da perda (R$)" : "Valor em disputa (R$)";
+              const desc = isLoss
+                ? "Informe quanto foi efetivamente perdido nesta devolução (frete + taxas descontadas da carteira)."
+                : "Opcional. Se informado, quando você marcar 'Ganhei' ou 'Perdi' na aba Disputas o sistema já saberá o valor exato em jogo.";
+              return (
+                <div className={cn("mt-3 rounded-md border px-3 py-2.5", toneCls)}>
+                  <Label className={cn("text-xs font-medium", labelCls)}>{titulo}</Label>
+                  <p className={cn("text-[11px] mt-0.5 opacity-90", labelCls)}>{desc}</p>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="0,00"
+                    value={form.valorPerda || ""}
+                    onChange={(e) => set("valorPerda", Number(e.target.value))}
+                    className="mt-2 tabular text-base font-medium bg-card"
+                  />
+                </div>
+              );
+            })()}
+
           </div>
+
 
 
           {/* Itens */}
@@ -810,7 +846,8 @@ export default function Registrar() {
                 pecas={pecas}
                 cores={cores}
                 tamanhos={tamanhos}
-                showPeca={isDefeito}
+                showPeca={true}
+                pecaRequired={isDefeito}
                 onChange={(patch) => updateItem(it.id, patch)}
                 onRemove={() => removeItem(it.id)}
                 canRemove={form.itens.length > 1}
@@ -880,6 +917,7 @@ export default function Registrar() {
               <ul className="divide-y divide-border">
                 {filaHoje.map((d) => {
                   const total = valorTotal(d);
+                  const efetivo = valorEfetivo(d, motivos);
                   const qtd = quantidadeTotal(d);
                   const primeiroItem = d.itens[0];
                   const restante = d.itens.length - 1;
@@ -918,7 +956,13 @@ export default function Registrar() {
                                 : "text-foreground",
                           )}
                         >
-                          {d.status === "dispute" ? "R$ 1,00" : fmtBRL(total)}
+                          {d.status === "pending"
+                            ? "—"
+                            : d.status === "loss"
+                              ? efetivo > 0 ? fmtBRL(efetivo) : fmtBRL(0)
+                              : d.status === "dispute"
+                                ? efetivo > 0 ? fmtBRL(efetivo) : "—"
+                                : fmtBRL(total)}
                         </span>
                         <button
                           onClick={() => deleteDevolucao(d.id)}
@@ -950,6 +994,7 @@ function ItemRow({
   cores,
   tamanhos,
   showPeca,
+  pecaRequired,
   onChange,
   onRemove,
   canRemove,
@@ -958,9 +1003,10 @@ function ItemRow({
   item: ItemForm;
   modelos: { id: string; nome: string }[];
   pecas: { id: string; nome: string }[];
-  cores: { id: string; nome: string }[];
-  tamanhos: { id: string; nome: string }[];
+  cores: { id?: string; nome: string }[] | string[];
+  tamanhos: { id?: string; nome: string }[] | string[];
   showPeca: boolean;
+  pecaRequired: boolean;
   onChange: (patch: Partial<ItemForm>) => void;
   onRemove: () => void;
   canRemove: boolean;
@@ -995,7 +1041,12 @@ function ItemRow({
         </div>
         {showPeca && (
           <div className="md:col-span-3">
-            <Field label="Componente afetado" compact hint="parte que veio com problema">
+            <Field
+              label="Componente afetado"
+              compact
+              required={pecaRequired}
+              hint={pecaRequired ? "obrigatório p/ defeito" : "ex.: top, legging (opcional)"}
+            >
               <QuickSelect
                 value={item.pecaId}
                 onValueChange={(v) => onChange({ pecaId: v })}

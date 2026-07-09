@@ -42,10 +42,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, TrendingDown, Activity, Percent, Package, Trash2, ChevronDown } from "lucide-react";
+import { Download, TrendingDown, Activity, Percent, Package, Trash2, ChevronDown, Pencil } from "lucide-react";
+import { EditarDevolucaoDialog } from "@/components/EditarDevolucaoDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import type { Devolucao } from "@/lib/types";
+import { estimarCustoDevolucao } from "@/lib/platformConfig";
 import {
   Bar,
   BarChart,
@@ -61,15 +63,24 @@ import {
 } from "recharts";
 
 const PIE_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--info))",
-  "hsl(var(--warning))",
-  "hsl(var(--destructive))",
-  "hsl(var(--muted-foreground))",
-  "hsl(220 30% 50%)",
+  "hsl(217 91% 55%)",   // azul
+  "hsl(28 92% 55%)",    // laranja
+  "hsl(160 70% 42%)",   // verde
+  "hsl(280 70% 58%)",   // roxo
+  "hsl(0 75% 58%)",     // vermelho
+  "hsl(48 95% 55%)",    // amarelo
+  "hsl(190 80% 45%)",   // ciano
+  "hsl(330 75% 58%)",   // rosa
+  "hsl(120 40% 45%)",   // verde escuro
+  "hsl(15 75% 50%)",    // terracota
 ];
 
 const ALL = "__all__";
+
+const currentCompetencia = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
 
 export default function Dashboard() {
   const devolucoes = useStore((s) => s.devolucoes);
@@ -86,11 +97,13 @@ export default function Dashboard() {
   const [fPlataforma, setFPlataforma] = useState(ALL);
   const [fStatus, setFStatus] = useState(ALL);
   const [fMotivo, setFMotivo] = useState(ALL);
-  const [fCompetencia, setFCompetencia] = useState(ALL);
+  // Competência default = mês atual (usuário troca se quiser ver outro período).
+  const [fCompetencia, setFCompetencia] = useState<string>(currentCompetencia());
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
   const [topN, setTopN] = useState(10);
   const [excluir, setExcluir] = useState<Devolucao | null>(null);
+  const [editar, setEditar] = useState<Devolucao | null>(null);
   const PAGE = 12;
 
   const competencias = useMemo(() => {
@@ -125,17 +138,42 @@ export default function Dashboard() {
     // Apenas devoluções cujo motivo gera perda operacional entram nos
     // indicadores financeiros (recuperado / perda / em risco).
     const comPerda = filtradas.filter((d) => motivoGeraPerda(motivos, d.motivoId));
+    // NOVO MODELO: trabalhamos com CUSTO REAL da devolução (frete + taxas),
+    // não com valor bruto do pedido. valorEfetivo já aplica essa regra.
     const valorPerda = comPerda
       .filter((d) => d.status === "loss")
-      .reduce((s, d) => s + valorTotal(d), 0);
+      .reduce((s, d) => s + valorEfetivo(d, motivos), 0);
     const valorRecuperado = comPerda
       .filter((d) => d.status === "resolved")
-      .reduce((s, d) => s + (d.valorRecuperado ?? valorTotal(d)), 0);
-    const disputasAbertas = filtradas.filter((d) => d.status === "dispute").length;
-    const valorEmDisputa = comPerda
-      .filter((d) => d.status === "dispute")
-      .reduce((s, d) => s + valorTotal(d), 0);
-    const totalAvaliado = comPerda.reduce((s, d) => s + valorTotal(d), 0);
+      .reduce((s, d) => s + valorEfetivo(d, motivos), 0);
+
+    // "Disputas em aberto" muda de semântica conforme a competência selecionada:
+    // • Mês atual (ou "todos") → disputas ainda em andamento (status=dispute)
+    //   com o risco vivo (valor informado ou estimado).
+    // • Mês passado → total FIXO de disputas que aconteceram naquele mês
+    //   (flag foiDisputa) e o valor que esteve em risco. Isso conversa com
+    //   a taxa de recuperação, que também é histórica.
+    const mesAtual = currentCompetencia();
+    const historicoFixo = fCompetencia !== ALL && fCompetencia !== mesAtual;
+
+    let disputasAbertas: number;
+    let valorEmDisputa: number;
+    if (historicoFixo) {
+      const historico = filtradas.filter((d) => d.foiDisputa || d.status === "dispute");
+      disputasAbertas = historico.length;
+      valorEmDisputa = historico.reduce((s, d) => s + Number(d.valorRecuperado ?? 0), 0);
+    } else {
+      disputasAbertas = filtradas.filter((d) => d.status === "dispute").length;
+      valorEmDisputa = comPerda
+        .filter((d) => d.status === "dispute")
+        .reduce((s, d) => {
+          if (d.valorRecuperado && d.valorRecuperado > 0) return s + d.valorRecuperado;
+          const nome = lookup(plataformas, d.plataformaId);
+          return s + (estimarCustoDevolucao(d.plataformaId, nome) ?? 0);
+        }, 0);
+    }
+
+    const totalAvaliado = valorPerda + valorRecuperado;
     const taxaRecuperacao = totalAvaliado > 0 ? (valorRecuperado / totalAvaliado) * 100 : 0;
     const semPerda = filtradas.length - comPerda.length;
     return {
@@ -147,18 +185,36 @@ export default function Dashboard() {
       valorEmDisputa,
       taxaRecuperacao,
       semPerda,
+      historicoFixo,
     };
-  }, [filtradas, motivos]);
+  }, [filtradas, motivos, plataformas, fCompetencia]);
+
+
+  // Evolução mensal ignora o filtro de competência (senão o gráfico de 6 meses
+  // colapsa para um único mês quando o usuário está olhando o mês atual).
+  // Demais filtros continuam valendo.
+  const baseEvolucao = useMemo(() => {
+    return devolucoes.filter((d) => {
+      if (fEmpresa !== ALL && d.empresaId !== fEmpresa) return false;
+      if (fPlataforma !== ALL && d.plataformaId !== fPlataforma) return false;
+      if (fStatus !== ALL && d.status !== fStatus) return false;
+      if (fMotivo !== ALL && d.motivoId !== fMotivo) return false;
+      return true;
+    });
+  }, [devolucoes, fEmpresa, fPlataforma, fStatus, fMotivo]);
 
   const evolucaoMensal = useMemo(() => {
-    const map = new Map<string, { mes: string; resolvidas: number; disputas: number; perdas: number }>();
-    filtradas.forEach((d) => {
+    const map = new Map<string, { mes: string; resolvidas: number; perdas: number; disputasQtd: number }>();
+    baseEvolucao.forEach((d) => {
       const key = d.competencia;
-      const cur = map.get(key) ?? { mes: key, resolvidas: 0, disputas: 0, perdas: 0 };
+      const cur = map.get(key) ?? { mes: key, resolvidas: 0, perdas: 0, disputasQtd: 0 };
       const v = valorEfetivo(d, motivos);
       if (d.status === "resolved") cur.resolvidas += v;
-      else if (d.status === "dispute") cur.disputas += v;
-      else cur.perdas += v;
+      else if (d.status === "loss") cur.perdas += v;
+      // Disputas = histórico fixo: conta toda devolução que passou por status
+      // "Em disputa" em algum momento (mesmo já resolvida/perdida).
+      // "Aguardando valor" NÃO entra aqui.
+      if (d.foiDisputa || d.status === "dispute") cur.disputasQtd += 1;
       map.set(key, cur);
     });
     return Array.from(map.values())
@@ -168,7 +224,7 @@ export default function Dashboard() {
         ...m,
         label: m.mes.split("-").reverse().join("/"),
       }));
-  }, [filtradas, motivos]);
+  }, [baseEvolucao, motivos]);
 
   const porEmpresa = useMemo(() => {
     const map = new Map<string, number>();
@@ -291,7 +347,7 @@ export default function Dashboard() {
     evolucaoMensal: evolucaoMensal.map((m) => ({
       mes: m.mes,
       resolvidas: Math.round(m.resolvidas),
-      disputas: Math.round(m.disputas),
+      disputasQtd: m.disputasQtd,
       perdas: Math.round(m.perdas),
     })),
     porEmpresa,
@@ -304,6 +360,7 @@ export default function Dashboard() {
       tamanhos: p.tamanhos.slice(0, 5),
       cores: p.cores.slice(0, 5),
       defeitos: p.defeitos.slice(0, 5),
+      componentes: p.componentes.slice(0, 5),
       notas: p.notas.slice(0, 8),
     })),
     // Notas recentes do recorte — contexto qualitativo que a IA cruza com os agregados.
@@ -405,6 +462,7 @@ export default function Dashboard() {
           <SelectItem value="resolved">Resolvidas</SelectItem>
           <SelectItem value="dispute">Em disputa</SelectItem>
           <SelectItem value="loss">Perdas</SelectItem>
+          <SelectItem value="pending">Aguardando valor</SelectItem>
         </FilterSelect>
         <FilterSelect label="Motivo" value={fMotivo} onChange={setFMotivo}>
           <SelectItem value={ALL}>Todos motivos</SelectItem>
@@ -424,40 +482,52 @@ export default function Dashboard() {
           sub={`${stats.totalItens} itens no total`}
         />
         <KpiCard
-          label="Valor de perda"
+          label="Custo das perdas"
           value={fmtBRL(stats.valorPerda)}
           tone="destructive"
           icon={<TrendingDown className="h-4 w-4" />}
-          sub="confirmadas"
+          sub="frete + taxas perdidas"
         />
         <KpiCard
-          label="Disputas em aberto"
+          label={stats.historicoFixo ? "Disputas no mês" : "Disputas em aberto"}
           value={stats.disputasAbertas}
           tone="warning"
-          sub={fmtBRL(stats.valorEmDisputa) + " em risco"}
+          sub={
+            fmtBRL(stats.valorEmDisputa) +
+            (stats.historicoFixo ? " esteve em risco" : " estimado em risco")
+          }
         />
         <KpiCard
           label="Taxa de recuperação"
           value={`${stats.taxaRecuperacao.toFixed(1)}%`}
           tone="success"
           icon={<Percent className="h-4 w-4" />}
-          sub={`${fmtBRL(stats.valorRecuperado)} recuperado`}
+          sub={`${fmtBRL(stats.valorRecuperado)} recuperado em disputas`}
         />
       </div>
 
       <AiInsights payload={aiPayload} />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard title="Evolução mensal" subtitle="Valor por status (últimos 6 meses)" className="lg:col-span-2">
+        <ChartCard title="Evolução mensal" subtitle="Resolvidas e Perdas em R$ · Disputas em quantidade (últimos 6 meses)" className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={evolucaoMensal} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis
+                yAxisId="left"
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => fmtBRLCompact(v as number)}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                allowDecimals={false}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                axisLine={false}
+                tickLine={false}
               />
               <Tooltip
                 contentStyle={{
@@ -466,12 +536,12 @@ export default function Dashboard() {
                   borderRadius: 6,
                   fontSize: 12,
                 }}
-                formatter={(v) => fmtBRL(v as number)}
+                formatter={(v, name) => (name === "Disputas (qtd)" ? `${v}` : fmtBRL(v as number))}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="resolvidas" name="Resolvidas" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="disputas" name="Disputas" fill="hsl(var(--warning))" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="perdas" name="Perdas" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
+              <Bar yAxisId="left" dataKey="resolvidas" name="Resolvidas (R$)" fill="hsl(217 91% 55%)" radius={[3, 3, 0, 0]} />
+              <Bar yAxisId="left" dataKey="perdas" name="Perdas (R$)" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
+              <Bar yAxisId="right" dataKey="disputasQtd" name="Disputas (qtd)" fill="hsl(28 92% 55%)" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -613,7 +683,7 @@ export default function Dashboard() {
                 <TableHead className="text-right">Qtd</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[40px]"></TableHead>
+                <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -642,21 +712,37 @@ export default function Dashboard() {
                     <TableCell className="text-xs text-muted-foreground">{lookup(motivos, d.motivoId)}</TableCell>
                     <TableCell className="text-right tabular text-sm">{quantidadeTotal(d)}</TableCell>
                     <TableCell className="text-right tabular text-sm font-medium">
-                      {d.status === "dispute" ? "R$ 1,00" : fmtBRL(valorEfetivo(d, motivos))}
+                      {(() => {
+                        if (d.status === "pending") return "—";
+                        const v = valorEfetivo(d, motivos);
+                        if (v <= 0) return d.status === "dispute" ? "—" : fmtBRL(0);
+                        return fmtBRL(v);
+                      })()}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={d.status} />
                     </TableCell>
                     <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => setExcluir(d)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive-soft/40"
-                        aria-label="Excluir registro"
-                        title="Excluir registro"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => setEditar(d)}
+                          className="text-muted-foreground hover:text-primary p-1 rounded-md hover:bg-primary-soft/40"
+                          aria-label="Editar registro"
+                          title="Editar registro"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExcluir(d)}
+                          className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive-soft/40"
+                          aria-label="Excluir registro"
+                          title="Excluir registro"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -690,6 +776,8 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      <EditarDevolucaoDialog devolucao={editar} onClose={() => setEditar(null)} />
 
       <AlertDialog open={!!excluir} onOpenChange={(o) => !o && setExcluir(null)}>
         <AlertDialogContent>
@@ -970,8 +1058,13 @@ function ProdutoAnaliseRow({
           />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="grid gap-3 px-2 py-3 sm:grid-cols-2 lg:grid-cols-4 border-t border-dashed border-border mt-1">
+          <div className="grid gap-3 px-2 py-3 sm:grid-cols-2 lg:grid-cols-5 border-t border-dashed border-border mt-1">
             <BreakdownList title="Motivos" rows={produto.motivos} />
+            <BreakdownList
+              title="Peça do conjunto"
+              rows={produto.componentes}
+              empty="Sem componente informado"
+            />
             <BreakdownList title="Tamanhos" rows={produto.tamanhos} empty="Sem tamanho informado" />
             <BreakdownList title="Cores" rows={produto.cores} empty="Sem cor informada" />
             <BreakdownList

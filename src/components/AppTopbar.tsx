@@ -58,7 +58,7 @@ export function AppTopbar() {
   };
 
   const disputaCount = useMemo(
-    () => devolucoes.filter((d) => d.status === "dispute").length,
+    () => devolucoes.filter((d) => d.status === "dispute" || d.status === "pending").length,
     [devolucoes],
   );
   const aCaminhoCount = pedidosACaminho.length;

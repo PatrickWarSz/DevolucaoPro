@@ -42,7 +42,7 @@ export interface AiInsightPayload {
     valorEmDisputa: number;
     taxaRecuperacao: number;
   };
-  evolucaoMensal: Array<{ mes: string; resolvidas: number; disputas: number; perdas: number }>;
+  evolucaoMensal: Array<{ mes: string; resolvidas: number; perdas: number; disputasQtd: number }>;
   porEmpresa: Array<{ name: string; value: number }>;
   porMotivo: Array<{ name: string; value: number }>;
   produtos: Array<{
