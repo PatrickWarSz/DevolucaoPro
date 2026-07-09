@@ -47,8 +47,31 @@ export function registerPwa() {
   }
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register(SW_URL, { scope: "/" }).catch(() => {
-      /* registration may fail offline — ignore */
-    });
+    navigator.serviceWorker
+      .register(SW_URL, { scope: "/" })
+      .then((registration) => {
+        // Checa por versão nova a cada 15 minutos, mesmo com a aba aberta
+        // (sem isso, o navegador só verifica em navegações/reloads, o que
+        // pode demorar horas se a pessoa deixar o app aberto o dia todo).
+        setInterval(() => {
+          registration.update().catch(() => {
+            /* offline ou falha temporária — ignora, tenta de novo no próximo ciclo */
+          });
+        }, 15 * 60 * 1000);
+      })
+      .catch(() => {
+        /* registration may fail offline — ignore */
+      });
+  });
+
+  // Rede de segurança do "autoUpdate": quando o Service Worker novo assume
+  // o controle da página, a aba recarrega sozinha uma única vez pra buscar
+  // o JS/CSS novo. Sem isso, quem já está com o app aberto continua rodando
+  // código antigo mesmo depois do SW novo já ter assumido.
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloaded) return;
+    reloaded = true;
+    window.location.reload();
   });
 }
