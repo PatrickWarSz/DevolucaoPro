@@ -498,9 +498,9 @@ function RowLine({
   return (
     <tr className={cn("align-top", dim && "opacity-50")}>
       <td className="px-3 py-2">
-        <Icon className={cn("h-4 w-4", statusPill.cls)} aria-label={statusPill.title}>
-          <title>{statusPill.title}</title>
-        </Icon>
+        <span title={statusPill.title} className="inline-flex">
+          <Icon className={cn("h-4 w-4", statusPill.cls)} />
+        </span>
       </td>
       <td className="px-3 py-2">
         <div className="font-mono text-[11px] font-medium">{row.pedidoId || "—"}</div>
