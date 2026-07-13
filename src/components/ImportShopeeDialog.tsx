@@ -1,15 +1,11 @@
 /**
  * ImportShopeeDialog.tsx
  *
- * Wizard 3 passos para importar a planilha oficial de devoluções da Shopee
- * como "pedidos a caminho":
- *  1) Seleciona empresa + plataforma dona da planilha + upload do arquivo.
- *  2) Revisa cada linha: 🟢 ready · 🟡 review · 🔴 duplicate · ⚫ skip.
- *     Só linhas ready importam. As review precisam ser resolvidas inline
- *     (escolher modelo e/ou motivo). Duplicate/Skip são exibidos e ignorados.
- *  3) Confirma → cria os PedidoACaminho no store. Toast com o resumo.
- *
- * NENHUMA linha entra silenciosamente se tiver divergência (regra do usuário).
+ * Wizard 3 passos para importar a planilha oficial de devoluções da Shopee:
+ *  1) Empresa + upload. Plataforma é auto-derivada (usa a única/1ª Shopee
+ *     vinculada à empresa; se não houver, avisa).
+ *  2) Revisa cada linha. Itens editáveis; kits ganham "+ item".
+ *  3) Confirma.
  */
 
 import { useMemo, useRef, useState } from "react";
@@ -23,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { QuickSelect } from "@/components/QuickSelect";
 import { useStore, lookup } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +28,7 @@ import {
   parseShopeeFile,
   revalidateRow,
   type ShopeeImportRow,
+  type ShopeeImportItem,
 } from "@/lib/importers/shopee";
 import { fmtBRL } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -44,6 +42,8 @@ import {
   ArrowLeft,
   ArrowRight,
   Loader2,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 interface Props {
@@ -68,7 +68,6 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
 
   const [step, setStep] = useState<Step>("upload");
   const [empresaId, setEmpresaId] = useState("");
-  const [plataformaId, setPlataformaId] = useState("");
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<ShopeeImportRow[]>([]);
@@ -80,12 +79,15 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const plataformasDaEmpresa = useMemo(() => {
-    if (!empresaId) return [];
-    const ids = contas
+  /** Plataforma Shopee vinculada à empresa (auto). */
+  const plataformaShopeeId = useMemo(() => {
+    if (!empresaId) return "";
+    const idsPlats = contas
       .filter((c) => c.empresaId === empresaId)
       .map((c) => c.plataformaId);
-    return plataformas.filter((p) => ids.includes(p.id));
+    const plats = plataformas.filter((p) => idsPlats.includes(p.id));
+    const shopee = plats.find((p) => /shopee/i.test(p.nome));
+    return (shopee ?? plats[0])?.id ?? "";
   }, [empresaId, contas, plataformas]);
 
   const contadores = useMemo(() => {
@@ -97,7 +99,6 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
   const reset = () => {
     setStep("upload");
     setEmpresaId("");
-    setPlataformaId("");
     setFileName("");
     setRows([]);
     setResumo(null);
@@ -112,10 +113,19 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!empresaId || !plataformaId) {
+    if (!empresaId) {
       toast({
-        title: "Escolha empresa e plataforma antes",
-        description: "Precisamos saber a qual conta essa planilha pertence.",
+        title: "Escolha a empresa antes",
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
+    if (!plataformaShopeeId) {
+      toast({
+        title: "Sem plataforma vinculada",
+        description:
+          "Vá em Configurações → Contas e vincule a Shopee a esta empresa.",
         variant: "destructive",
       });
       e.target.value = "";
@@ -125,9 +135,7 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
     setFileName(file.name);
     try {
       const raw = await parseShopeeFile(file);
-      if (raw.length === 0) {
-        throw new Error("A planilha está vazia.");
-      }
+      if (raw.length === 0) throw new Error("A planilha está vazia.");
       const classified = classifyRows(raw, {
         modelos,
         motivos,
@@ -164,6 +172,59 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
     );
   };
 
+  const updateItem = (
+    rowKey: string,
+    itemId: string,
+    patch: Partial<ShopeeImportItem>,
+  ) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== rowKey) return r;
+        const itens = r.itens.map((i) =>
+          i.id === itemId ? { ...i, ...patch } : i,
+        );
+        return revalidateRow(
+          { ...r, itens },
+          { modelos, motivos, pedidosACaminho, devolucoes },
+        );
+      }),
+    );
+  };
+
+  const addItem = (rowKey: string) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== rowKey) return r;
+        const base = r.itens[r.itens.length - 1];
+        const novo: ShopeeImportItem = {
+          id: `it-${rowKey}-${r.itens.length}-${Date.now()}`,
+          modeloId: base?.modeloId ?? "",
+          cor: "",
+          tamanho: "",
+          quantidade: 1,
+          valor: base?.valor ?? 0,
+        };
+        return revalidateRow(
+          { ...r, itens: [...r.itens, novo] },
+          { modelos, motivos, pedidosACaminho, devolucoes },
+        );
+      }),
+    );
+  };
+
+  const removeItem = (rowKey: string, itemId: string) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.key !== rowKey) return r;
+        if (r.itens.length <= 1) return r;
+        return revalidateRow(
+          { ...r, itens: r.itens.filter((i) => i.id !== itemId) },
+          { modelos, motivos, pedidosACaminho, devolucoes },
+        );
+      }),
+    );
+  };
+
   const handleConfirm = () => {
     const ready = rows.filter((r) => r.status === "ready");
     if (ready.length === 0) {
@@ -177,27 +238,20 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
     ready.forEach((r) => {
       addPedidoACaminho({
         empresaId,
-        plataformaId,
+        plataformaId: plataformaShopeeId,
         pedidoId: r.pedidoId,
         devolucaoId: r.devolucaoId || undefined,
         motivoId: r.motivoId || undefined,
-        notas: [
-          r.observacoes,
-          r.variacaoTextoOriginal ? `Variação Shopee: ${r.variacaoTextoOriginal}` : "",
-        ]
-          .filter(Boolean)
-          .join(" · ") || undefined,
-        itens: [
-          {
-            id: crypto.randomUUID(),
-            modeloId: r.modeloId,
-            pecaId: "",
-            cor: r.cor,
-            tamanho: r.tamanho,
-            quantidade: r.quantidade,
-            valor: r.valor * r.quantidade,
-          },
-        ],
+        notas: r.observacoes || undefined,
+        itens: r.itens.map((i) => ({
+          id: crypto.randomUUID(),
+          modeloId: i.modeloId,
+          pecaId: "",
+          cor: i.cor,
+          tamanho: i.tamanho,
+          quantidade: i.quantidade,
+          valor: i.valor * i.quantidade,
+        })),
       });
     });
     const reviewSkipped = rows.filter((r) => r.status === "review").length;
@@ -216,8 +270,6 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
     });
   };
 
-  const canGoToReview = empresaId && plataformaId && fileName;
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 gap-0">
@@ -227,13 +279,12 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
             Importar planilha Shopee
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {step === "upload" && "Escolha a conta e faça upload do arquivo de devoluções da Shopee."}
-            {step === "review" && "Revise cada linha antes de importar. Só linhas verdes serão criadas."}
+            {step === "upload" && "Escolha a empresa e faça upload do arquivo de devoluções da Shopee."}
+            {step === "review" && "Revise cada linha antes de importar. Kits podem ganhar + item."}
             {step === "done" && "Importação concluída."}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Corpo scrollável */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {step === "upload" && (
             <div className="space-y-5 max-w-lg">
@@ -243,32 +294,18 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
                 </Label>
                 <QuickSelect
                   value={empresaId}
-                  onValueChange={(v) => {
-                    setEmpresaId(v);
-                    setPlataformaId("");
-                  }}
+                  onValueChange={setEmpresaId}
                   placeholder="Escolha a empresa"
                   options={empresas.map((e) => ({ value: e.id, label: e.nome }))}
                 />
-              </div>
-
-              <div className="grid gap-2">
-                <Label className="text-xs font-medium text-muted-foreground">
-                  Plataforma <span className="text-destructive">*</span>
-                </Label>
-                <QuickSelect
-                  value={plataformaId}
-                  onValueChange={setPlataformaId}
-                  placeholder={empresaId ? "Escolha a plataforma" : "Escolha a empresa antes"}
-                  disabled={!empresaId}
-                  options={plataformasDaEmpresa.map((p) => ({
-                    value: p.id,
-                    label: p.nome,
-                  }))}
-                />
-                {empresaId && plataformasDaEmpresa.length === 0 && (
+                {empresaId && !plataformaShopeeId && (
                   <p className="text-[11px] text-warning">
                     Essa empresa não tem plataforma vinculada. Vá em Configurações → Contas.
+                  </p>
+                )}
+                {empresaId && plataformaShopeeId && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Plataforma: <span className="font-medium">{lookup(plataformas as never, plataformaShopeeId)}</span> (auto)
                   </p>
                 )}
               </div>
@@ -293,7 +330,7 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
                   size="sm"
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={!canGoToReview && !fileName ? !empresaId || !plataformaId : false}
+                  disabled={!empresaId || !plataformaShopeeId || loading}
                 >
                   {loading ? (
                     <>
@@ -313,7 +350,6 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
 
           {step === "review" && (
             <div className="space-y-3">
-              {/* Contadores */}
               <div className="grid grid-cols-4 gap-2">
                 <Counter icon={CheckCircle2} label="Pronto" value={contadores.ready} tone="success" />
                 <Counter icon={AlertTriangle} label="Revisar" value={contadores.review} tone="warning" />
@@ -321,7 +357,6 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
                 <Counter icon={Ban} label="Ignorado" value={contadores.skip} tone="muted" />
               </div>
 
-              {/* Tabela */}
               <div className="rounded-md border border-border overflow-hidden">
                 <div className="max-h-[52vh] overflow-y-auto">
                   <table className="w-full text-xs">
@@ -329,11 +364,9 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
                       <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                         <th className="px-3 py-2 w-8"></th>
                         <th className="px-3 py-2">Pedido</th>
-                        <th className="px-3 py-2">Produto → Modelo</th>
-                        <th className="px-3 py-2">Cor / Tam</th>
+                        <th className="px-3 py-2">Item(ns)</th>
                         <th className="px-3 py-2">Motivo</th>
-                        <th className="px-3 py-2 text-right">Qtd</th>
-                        <th className="px-3 py-2 text-right">Valor</th>
+                        <th className="px-3 py-2 text-right">Total</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -343,10 +376,13 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
                           row={r}
                           modelos={modelos}
                           motivos={motivos}
-                          onChange={(patch) => updateRow(r.key, patch)}
-                          onCreateModelo={(nome) => {
+                          onChangeRow={(patch) => updateRow(r.key, patch)}
+                          onChangeItem={(itemId, patch) => updateItem(r.key, itemId, patch)}
+                          onAddItem={() => addItem(r.key)}
+                          onRemoveItem={(itemId) => removeItem(r.key, itemId)}
+                          onCreateModelo={(nome, itemId) => {
                             const m = addModelo(nome);
-                            updateRow(r.key, { modeloId: m.id });
+                            updateItem(r.key, itemId, { modeloId: m.id });
                           }}
                           onCreateMotivo={(nome) => {
                             const m = addMotivo(nome, true);
@@ -475,15 +511,21 @@ function RowLine({
   row,
   modelos,
   motivos,
-  onChange,
+  onChangeRow,
+  onChangeItem,
+  onAddItem,
+  onRemoveItem,
   onCreateModelo,
   onCreateMotivo,
 }: {
   row: ShopeeImportRow;
   modelos: { id: string; nome: string }[];
   motivos: { id: string; nome: string }[];
-  onChange: (patch: Partial<ShopeeImportRow>) => void;
-  onCreateModelo: (nome: string) => void;
+  onChangeRow: (patch: Partial<ShopeeImportRow>) => void;
+  onChangeItem: (itemId: string, patch: Partial<ShopeeImportItem>) => void;
+  onAddItem: () => void;
+  onRemoveItem: (itemId: string) => void;
+  onCreateModelo: (nome: string, itemId: string) => void;
   onCreateMotivo: (nome: string) => void;
 }) {
   const dim = row.status === "skip" || row.status === "duplicate";
@@ -494,6 +536,7 @@ function RowLine({
     skip: { icon: Ban, cls: "text-muted-foreground", title: row.reason ?? "Ignorado" },
   }[row.status];
   const Icon = statusPill.icon;
+  const total = row.itens.reduce((s, i) => s + i.valor * i.quantidade, 0);
 
   return (
     <tr className={cn("align-top", dim && "opacity-50")}>
@@ -509,28 +552,42 @@ function RowLine({
             {row.devolucaoId}
           </div>
         )}
-      </td>
-      <td className="px-3 py-2 min-w-[240px]">
-        <div className="text-[11px] text-muted-foreground truncate mb-1" title={row.produtoTextoOriginal}>
-          {row.produtoTextoOriginal || "—"}
-        </div>
-        {dim ? (
-          <div className="text-[11px]">
-            {row.modeloId ? lookup(modelos as never, row.modeloId) : "—"}
+        {row.variacaoTextoOriginal && (
+          <div className="text-[10px] text-muted-foreground mt-1" title={row.variacaoTextoOriginal}>
+            Variação Shopee: {row.variacaoTextoOriginal}
           </div>
-        ) : (
-          <ModeloPicker
-            value={row.modeloId}
-            modelos={modelos}
-            onChange={(v) => onChange({ modeloId: v })}
-            onCreate={onCreateModelo}
-            sugestao={row.produtoTextoOriginal}
-          />
         )}
       </td>
-      <td className="px-3 py-2 whitespace-nowrap text-[11px]">
-        <div>{row.cor || "—"}</div>
-        <div className="text-muted-foreground">{row.tamanho || "—"}</div>
+      <td className="px-3 py-2 min-w-[360px]">
+        <div className="text-[11px] text-muted-foreground truncate mb-1.5" title={row.produtoTextoOriginal}>
+          {row.produtoTextoOriginal || "—"}
+        </div>
+        <div className="space-y-1.5">
+          {row.itens.map((item, idx) => (
+            <ItemLine
+              key={item.id}
+              item={item}
+              index={idx}
+              total={row.itens.length}
+              modelos={modelos}
+              dim={dim}
+              sugestaoModelo={row.produtoTextoOriginal}
+              onChange={(patch) => onChangeItem(item.id, patch)}
+              onRemove={() => onRemoveItem(item.id)}
+              onCreateModelo={(nome) => onCreateModelo(nome, item.id)}
+            />
+          ))}
+        </div>
+        {!dim && (
+          <button
+            type="button"
+            onClick={onAddItem}
+            className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
+          >
+            <Plus className="h-3 w-3" />
+            Adicionar item (kit)
+          </button>
+        )}
       </td>
       <td className="px-3 py-2 min-w-[200px]">
         <div className="text-[11px] text-muted-foreground truncate mb-1" title={row.motivoTextoOriginal}>
@@ -544,53 +601,111 @@ function RowLine({
           <MotivoPicker
             value={row.motivoId}
             motivos={motivos}
-            onChange={(v) => onChange({ motivoId: v })}
+            onChange={(v) => onChangeRow({ motivoId: v })}
             onCreate={onCreateMotivo}
             sugestao={row.motivoTextoOriginal}
           />
         )}
       </td>
-      <td className="px-3 py-2 text-right tabular">{row.quantidade}</td>
-      <td className="px-3 py-2 text-right tabular">
-        {fmtBRL(row.valor * row.quantidade)}
+      <td className="px-3 py-2 text-right tabular whitespace-nowrap">
+        {fmtBRL(total)}
       </td>
     </tr>
   );
 }
 
-/** Select de modelo com opção "+ Criar novo com o nome do produto Shopee" */
-function ModeloPicker({
-  value,
+function ItemLine({
+  item,
+  index,
+  total,
   modelos,
+  dim,
+  sugestaoModelo,
   onChange,
-  onCreate,
-  sugestao,
+  onRemove,
+  onCreateModelo,
 }: {
-  value: string;
+  item: ShopeeImportItem;
+  index: number;
+  total: number;
   modelos: { id: string; nome: string }[];
-  onChange: (v: string) => void;
-  onCreate: (nome: string) => void;
-  sugestao: string;
+  dim: boolean;
+  sugestaoModelo: string;
+  onChange: (patch: Partial<ShopeeImportItem>) => void;
+  onRemove: () => void;
+  onCreateModelo: (nome: string) => void;
 }) {
+  if (dim) {
+    return (
+      <div className="text-[11px]">
+        {item.modeloId ? lookup(modelos as never, item.modeloId) : "—"} · {item.cor || "—"} / {item.tamanho || "—"} · {item.quantidade}×
+      </div>
+    );
+  }
   return (
-    <div className="space-y-1">
-      <QuickSelect
-        value={value}
-        onValueChange={onChange}
-        placeholder="Escolha o modelo"
-        options={modelos.map((m) => ({ value: m.id, label: m.nome }))}
-        advanceOnSelect={false}
-      />
-      {!value && sugestao && (
+    <div className="rounded border border-border/60 bg-surface-muted/30 p-1.5 space-y-1">
+      <div className="flex items-center gap-1">
+        <span className="text-[9px] font-medium text-muted-foreground w-8">
+          Item {index + 1}
+        </span>
+        <div className="flex-1 min-w-0">
+          <QuickSelect
+            value={item.modeloId}
+            onValueChange={(v) => onChange({ modeloId: v })}
+            placeholder="Modelo"
+            options={modelos.map((m) => ({ value: m.id, label: m.nome }))}
+            advanceOnSelect={false}
+          />
+        </div>
+        {total > 1 && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="p-1 text-muted-foreground hover:text-destructive"
+            title="Remover item"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+      {!item.modeloId && sugestaoModelo && (
         <button
           type="button"
-          onClick={() => onCreate(sugestao)}
+          onClick={() => onCreateModelo(sugestaoModelo)}
           className="text-[10px] text-primary hover:underline text-left w-full truncate"
-          title={`Criar modelo "${sugestao}"`}
         >
-          + Criar modelo "{sugestao.length > 40 ? sugestao.slice(0, 40) + "…" : sugestao}"
+          + Criar modelo "{sugestaoModelo.length > 40 ? sugestaoModelo.slice(0, 40) + "…" : sugestaoModelo}"
         </button>
       )}
+      <div className="grid grid-cols-[1fr_70px_50px_90px] gap-1">
+        <Input
+          value={item.cor}
+          onChange={(e) => onChange({ cor: e.target.value })}
+          placeholder="Cor"
+          className="h-7 text-[11px]"
+        />
+        <Input
+          value={item.tamanho}
+          onChange={(e) => onChange({ tamanho: e.target.value })}
+          placeholder="Tam"
+          className="h-7 text-[11px]"
+        />
+        <Input
+          type="number"
+          min={1}
+          value={item.quantidade}
+          onChange={(e) => onChange({ quantidade: Math.max(1, Number(e.target.value) || 1) })}
+          className="h-7 text-[11px] tabular"
+        />
+        <Input
+          type="number"
+          step="0.01"
+          value={item.valor}
+          onChange={(e) => onChange({ valor: Number(e.target.value) || 0 })}
+          className="h-7 text-[11px] tabular"
+          placeholder="Valor un."
+        />
+      </div>
     </div>
   );
 }
