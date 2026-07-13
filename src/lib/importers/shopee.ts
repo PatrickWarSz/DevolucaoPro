@@ -286,15 +286,20 @@ export function classifyRows(
       createdAt,
       produtoTextoOriginal: produto,
       variacaoTextoOriginal: variacao,
-      cor,
-      tamanho,
-      quantidade: qtd,
-      valor,
       motivoTextoOriginal: motivoTxt,
       observacoes: obs,
       statusShopee,
-      modeloId: modelo?.id ?? "",
       motivoId: motivo?.id ?? "",
+      itens: [
+        {
+          id: `it-${idx}-0`,
+          modeloId: modelo?.id ?? "",
+          cor,
+          tamanho,
+          quantidade: qtd,
+          valor,
+        },
+      ],
     };
   });
 }
@@ -307,11 +312,12 @@ export function revalidateRow(
 ): ShopeeImportRow {
   if (row.status === "skip" || row.status === "duplicate") return row;
 
-  if (!row.modeloId) {
-    return { ...row, status: "review", reason: "Escolha um modelo" };
+  if (row.itens.length === 0 || row.itens.some((i) => !i.modeloId)) {
+    return { ...row, status: "review", reason: "Escolha o modelo de cada item" };
   }
   if (!row.motivoId) {
     return { ...row, status: "review", reason: "Escolha um motivo" };
   }
   return { ...row, status: "ready", reason: undefined };
 }
+
