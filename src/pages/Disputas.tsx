@@ -149,10 +149,10 @@ export default function Disputas() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Em disputa agora"
-          value={stats.total}
+          value={stats.emDisputa}
           tone="warning"
           icon={<ShieldAlert className="h-4 w-4" />}
-          sub="pedidos pendentes"
+          sub={`${stats.aguardando} aguardando valor`}
         />
         <KpiCard
           label="Prazo vencido"
