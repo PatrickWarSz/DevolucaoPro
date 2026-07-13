@@ -20,8 +20,10 @@ import {
   Search,
   Sparkles,
   Pencil,
+  FileSpreadsheet,
 } from "lucide-react";
 import type { DevolucaoItem, PedidoACaminho } from "@/lib/types";
+import { ImportShopeeDialog } from "@/components/ImportShopeeDialog";
 import { useNavigate } from "react-router-dom";
 
 type ItemForm = Omit<DevolucaoItem, "id"> & { id: string };
