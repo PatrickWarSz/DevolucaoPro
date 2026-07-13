@@ -20,8 +20,10 @@ import {
   Search,
   Sparkles,
   Pencil,
+  FileSpreadsheet,
 } from "lucide-react";
 import type { DevolucaoItem, PedidoACaminho } from "@/lib/types";
+import { ImportShopeeDialog } from "@/components/ImportShopeeDialog";
 import { useNavigate } from "react-router-dom";
 
 type ItemForm = Omit<DevolucaoItem, "id"> & { id: string };
@@ -76,6 +78,7 @@ export default function ACaminho() {
   const addPedidoACaminho = useStore((s) => s.addPedidoACaminho);
   const deletePedidoACaminho = useStore((s) => s.deletePedidoACaminho);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const [form, setForm] = useState<FormState>(empty());
   const [busca, setBusca] = useState("");
@@ -255,7 +258,15 @@ export default function ACaminho() {
       <PageHeader
         title="Pedidos a caminho"
         description="Pré-cadastre pedidos que o cliente já postou. Quando chegarem, é só usar o ID no Registrar para puxar tudo."
+        actions={
+          <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+            Importar planilha Shopee
+          </Button>
+        }
       />
+
+      <ImportShopeeDialog open={importOpen} onOpenChange={setImportOpen} />
 
       <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
         {/* Form */}
