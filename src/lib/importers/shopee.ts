@@ -31,6 +31,15 @@ interface ShopeeRawRow {
 
 export type RowStatus = "ready" | "review" | "duplicate" | "skip";
 
+export interface ShopeeImportItem {
+  id: string;
+  modeloId: string;
+  cor: string;
+  tamanho: string;
+  quantidade: number;
+  valor: number;
+}
+
 export interface ShopeeImportRow {
   /** ID estável para uso no React (index-based). */
   key: string;
@@ -44,17 +53,15 @@ export interface ShopeeImportRow {
   createdAt: string; // ISO
   produtoTextoOriginal: string;
   variacaoTextoOriginal: string;
-  cor: string;
-  tamanho: string;
-  quantidade: number;
-  valor: number;
   motivoTextoOriginal: string;
   observacoes: string;
   statusShopee: string;
 
-  // Vínculos resolvidos (podem ser vazios se status="review")
-  modeloId: string;
+  // Vínculos resolvidos
   motivoId: string;
+
+  /** 1+ itens. Kits podem ter mais que um; usuário adiciona manualmente. */
+  itens: ShopeeImportItem[];
 }
 
 export interface ClassifyContext {
@@ -279,15 +286,20 @@ export function classifyRows(
       createdAt,
       produtoTextoOriginal: produto,
       variacaoTextoOriginal: variacao,
-      cor,
-      tamanho,
-      quantidade: qtd,
-      valor,
       motivoTextoOriginal: motivoTxt,
       observacoes: obs,
       statusShopee,
-      modeloId: modelo?.id ?? "",
       motivoId: motivo?.id ?? "",
+      itens: [
+        {
+          id: `it-${idx}-0`,
+          modeloId: modelo?.id ?? "",
+          cor,
+          tamanho,
+          quantidade: qtd,
+          valor,
+        },
+      ],
     };
   });
 }
@@ -300,11 +312,12 @@ export function revalidateRow(
 ): ShopeeImportRow {
   if (row.status === "skip" || row.status === "duplicate") return row;
 
-  if (!row.modeloId) {
-    return { ...row, status: "review", reason: "Escolha um modelo" };
+  if (row.itens.length === 0 || row.itens.some((i) => !i.modeloId)) {
+    return { ...row, status: "review", reason: "Escolha o modelo de cada item" };
   }
   if (!row.motivoId) {
     return { ...row, status: "review", reason: "Escolha um motivo" };
   }
   return { ...row, status: "ready", reason: undefined };
 }
+
