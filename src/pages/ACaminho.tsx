@@ -78,6 +78,7 @@ export default function ACaminho() {
   const addPedidoACaminho = useStore((s) => s.addPedidoACaminho);
   const deletePedidoACaminho = useStore((s) => s.deletePedidoACaminho);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const [form, setForm] = useState<FormState>(empty());
   const [busca, setBusca] = useState("");
