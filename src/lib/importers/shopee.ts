@@ -31,6 +31,15 @@ interface ShopeeRawRow {
 
 export type RowStatus = "ready" | "review" | "duplicate" | "skip";
 
+export interface ShopeeImportItem {
+  id: string;
+  modeloId: string;
+  cor: string;
+  tamanho: string;
+  quantidade: number;
+  valor: number;
+}
+
 export interface ShopeeImportRow {
   /** ID estável para uso no React (index-based). */
   key: string;
@@ -44,17 +53,15 @@ export interface ShopeeImportRow {
   createdAt: string; // ISO
   produtoTextoOriginal: string;
   variacaoTextoOriginal: string;
-  cor: string;
-  tamanho: string;
-  quantidade: number;
-  valor: number;
   motivoTextoOriginal: string;
   observacoes: string;
   statusShopee: string;
 
-  // Vínculos resolvidos (podem ser vazios se status="review")
-  modeloId: string;
+  // Vínculos resolvidos
   motivoId: string;
+
+  /** 1+ itens. Kits podem ter mais que um; usuário adiciona manualmente. */
+  itens: ShopeeImportItem[];
 }
 
 export interface ClassifyContext {
