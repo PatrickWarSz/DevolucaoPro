@@ -258,7 +258,15 @@ export default function ACaminho() {
       <PageHeader
         title="Pedidos a caminho"
         description="Pré-cadastre pedidos que o cliente já postou. Quando chegarem, é só usar o ID no Registrar para puxar tudo."
+        actions={
+          <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+            Importar planilha Shopee
+          </Button>
+        }
       />
+
+      <ImportShopeeDialog open={importOpen} onOpenChange={setImportOpen} />
 
       <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
         {/* Form */}
