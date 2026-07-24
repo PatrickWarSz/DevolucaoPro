@@ -48,9 +48,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    // AQUI: Puxando o segredo exclusivo das Devoluções!
+    const apiKey = Deno.env.get("GEMINI_API_KEY_DEVOLUCAO");
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "GEMINI_API_KEY ausente" }), {
+      return new Response(JSON.stringify({ error: "GEMINI_API_KEY_DEVOLUCAO ausente" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -108,9 +109,6 @@ Responda APENAS no formato JSON abaixo:
   "resposta": ${body.pergunta ? '"resposta direta à pergunta"' : "null"}
 }`;
 
-    // Modelo configurável — mesmo padrão do FocoFinanceiro. Se a Google
-    // trocar o tier grátis de novo, ajusta o secret GEMINI_MODEL no
-    // Supabase e reimplanta, sem tocar neste arquivo.
     const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
@@ -128,11 +126,10 @@ Responda APENAS no formato JSON abaixo:
     });
 
     if (!aiRes.ok) {
-      // Erro cru da Google na resposta — sem isso a gente volta a adivinhar.
       const errText = await aiRes.text();
       let msg = `Falha na IA (${aiRes.status}) com modelo "${model}": ${errText.slice(0, 400)}`;
       if (aiRes.status === 429) msg = "Muitas requisições à IA agora — tente novamente em alguns segundos.";
-      if (aiRes.status === 401 || aiRes.status === 403) msg = `Chave GEMINI_API_KEY inválida, restrita ou sem permissão. Detalhe da Google: ${errText.slice(0, 300)}`;
+      if (aiRes.status === 401 || aiRes.status === 403) msg = `Chave GEMINI_API_KEY_DEVOLUCAO inválida, restrita ou sem permissão. Detalhe da Google: ${errText.slice(0, 300)}`;
       if (aiRes.status === 404) msg = `Modelo "${model}" não encontrado/disponível pra essa chave. Confira em aistudio.google.com/apikey e ajuste o secret GEMINI_MODEL. Detalhe: ${errText.slice(0, 200)}`;
       return new Response(JSON.stringify({ error: msg }), {
         status: 500,
