@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 
 interface Insight {
   resumo?: string;
@@ -89,9 +90,17 @@ export function AiInsights({ payload }: Props) {
         body: { ...payload, pergunta: perguntaTexto }, 
       });
       if (error || (data as { error?: string })?.error) {
-        throw new Error(
-          (data as { error?: string })?.error ?? error?.message ?? "Falha na IA",
-        );
+        // supabase-js descarta o corpo da resposta quando o status não é
+        // 2xx — sem isso, a mensagem vira só "non-2xx status code".
+        let motivo = (data as { error?: string })?.error;
+        if (!motivo && error instanceof FunctionsHttpError) {
+          try {
+            motivo = (await error.context.json())?.error;
+          } catch {
+            // corpo não veio em JSON — segue pro fallback abaixo
+          }
+        }
+        throw new Error(motivo ?? error?.message ?? "Falha na IA");
       }
       setInsight(data as Insight);
       setUltimaPergunta(perguntaTexto ?? null);

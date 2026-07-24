@@ -1,5 +1,7 @@
 // Edge Function: ai-insights
-// Conexão DIRETA e NATIVA com o Google Gemini (Versão atualizada 3.5-flash)
+// Conexão DIRETA e NATIVA com o Google Gemini. Modelo configurável via
+// secret GEMINI_MODEL (padrão: gemini-3.5-flash-lite — mesma decisão do
+// FocoFinanceiro, tier gratuito confirmado em jul/2026).
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -106,12 +108,16 @@ Responda APENAS no formato JSON abaixo:
   "resposta": ${body.pergunta ? '"resposta direta à pergunta"' : "null"}
 }`;
 
-    // Nova URL nativa do Google com o modelo gemini-3.5-flash
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+    // Modelo configurável — mesmo padrão do FocoFinanceiro. Se a Google
+    // trocar o tier grátis de novo, ajusta o secret GEMINI_MODEL no
+    // Supabase e reimplanta, sem tocar neste arquivo.
+    const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const aiRes = await fetch(url, {
       method: "POST",
       headers: {
+        "x-goog-api-key": apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -122,8 +128,13 @@ Responda APENAS no formato JSON abaixo:
     });
 
     if (!aiRes.ok) {
+      // Erro cru da Google na resposta — sem isso a gente volta a adivinhar.
       const errText = await aiRes.text();
-      return new Response(JSON.stringify({ error: "Falha no Gemini Nativo", detail: errText }), {
+      let msg = `Falha na IA (${aiRes.status}) com modelo "${model}": ${errText.slice(0, 400)}`;
+      if (aiRes.status === 429) msg = "Muitas requisições à IA agora — tente novamente em alguns segundos.";
+      if (aiRes.status === 401 || aiRes.status === 403) msg = `Chave GEMINI_API_KEY inválida, restrita ou sem permissão. Detalhe da Google: ${errText.slice(0, 300)}`;
+      if (aiRes.status === 404) msg = `Modelo "${model}" não encontrado/disponível pra essa chave. Confira em aistudio.google.com/apikey e ajuste o secret GEMINI_MODEL. Detalhe: ${errText.slice(0, 200)}`;
+      return new Response(JSON.stringify({ error: msg }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
