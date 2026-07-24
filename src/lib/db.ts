@@ -81,6 +81,11 @@ const mapDevolucao = (r: any): Devolucao => ({
   valorRecuperado: r.valor_recuperado ?? undefined,
   tipoDefeitoId: r.tipo_defeito_id ?? undefined,
   notas: r.notas ?? undefined,
+  // Carimbo permanente: "esta devolução já passou por disputa alguma vez?".
+  // Precisa vir do banco — se não ler aqui, toda recarga de página perde o
+  // histórico de disputas já resolvidas/perdidas (era a causa do bug do
+  // dashboard zerando os meses passados).
+  foiDisputa: r.foi_disputa ?? false,
   itens: (r.dev_devolucao_itens ?? []).map(mapItem),
 });
 
@@ -181,6 +186,8 @@ export async function insertDevolucao(
     status:          d.status,
     valor_recuperado:d.valorRecuperado ?? null,
     notas:           d.notas ?? null,
+    // Se já nasce como disputa, o carimbo já liga na criação.
+    foi_disputa:     d.foiDisputa ?? (d.status === "dispute"),
   });
   if (errCab) throw errCab;
 
@@ -207,7 +214,8 @@ export async function updateDevolucaoStatus(
   id: string,
   status: Devolucao["status"],
   valorRecuperado?: number,
-  tipoDefeitoId?: string
+  tipoDefeitoId?: string,
+  foiDisputa?: boolean
 ): Promise<void> {
   const { error } = await supabase
     .from("dev_devolucoes")
@@ -215,6 +223,9 @@ export async function updateDevolucaoStatus(
       status,
       valor_recuperado:  valorRecuperado ?? null,
       tipo_defeito_id:   tipoDefeitoId ?? null,
+      // Grava o carimbo permanente calculado no store (uma vez true, o
+      // store nunca manda false de volta — ver setStatus em store.ts).
+      foi_disputa:       foiDisputa ?? false,
     })
     .eq("id", id);
   if (error) throw error;
@@ -244,6 +255,7 @@ export async function updateDevolucaoFull(
       status:           d.status,
       valor_recuperado: d.valorRecuperado ?? null,
       notas:            d.notas ?? null,
+      foi_disputa:      d.foiDisputa ?? false,
     })
     .eq("id", id);
   if (errCab) throw errCab;

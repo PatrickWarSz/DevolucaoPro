@@ -259,7 +259,14 @@ export const useStore = create<State & Actions>()((set, get) => {
       set((s) => ({
         devolucoes: s.devolucoes.map((d) => {
           if (d.id !== id) return d;
-          const novo = { ...d, ...patch };
+          const novo = {
+            ...d,
+            ...patch,
+            // Mesma regra do setStatus: se a edição manual (diálogo "Editar
+            // devolução") mudar o status para "dispute", liga o carimbo
+            // permanente aqui também — não só no fluxo da tela de Disputas.
+            foiDisputa: patch.status === "dispute" ? true : (patch.foiDisputa ?? d.foiDisputa),
+          };
           // Se o operador adicionar novos itens sem id, gera IDs locais.
           novo.itens = (patch.itens ?? d.itens).map((it) =>
             it.id ? it : { ...it, id: uid() },
@@ -280,11 +287,12 @@ export const useStore = create<State & Actions>()((set, get) => {
     },
 
     setStatus: (id, status, valorRecuperado, tipoDefeitoId) => {
+      let atualizada: Devolucao | undefined;
       set((s) => ({
         devolucoes: s.devolucoes.map((d) => {
           if (d.id !== id) return d;
           const total = d.itens.reduce((acc, it) => acc + Number(it.valor || 0), 0);
-          return {
+          const novo = {
             ...d,
             status,
             // Se entrou em disputa em qualquer momento, mantém o histórico.
@@ -298,10 +306,12 @@ export const useStore = create<State & Actions>()((set, get) => {
             tipoDefeitoId:
               tipoDefeitoId !== undefined ? tipoDefeitoId || undefined : d.tipoDefeitoId,
           };
+          atualizada = novo;
+          return novo;
         }),
       }));
       _syncGuard(() =>
-        db.updateDevolucaoStatus(id, status, valorRecuperado, tipoDefeitoId)
+        db.updateDevolucaoStatus(id, status, valorRecuperado, tipoDefeitoId, atualizada?.foiDisputa)
       );
     },
 
