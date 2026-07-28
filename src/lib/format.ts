@@ -101,6 +101,14 @@ export const valorEfetivo = (d: Devolucao, motivos?: Motivo[]) => {
   if (d.status === "pending") return 0;
   if (d.status === "loss") return Number(d.valorRecuperado ?? 0);
   // resolved
+  // Se a devolução passou por uma disputa formal (foiDisputa), o valor
+  // recuperado é dinheiro real que voltou pro caixa — conta sempre, mesmo
+  // que o motivo original do item seja classificado como "sem culpa do
+  // vendedor" (ex.: Não Serviu). O filtro de `geraPerda` existe para não
+  // contar "custo" de devoluções resolvidas SEM disputa (ex.: cliente só
+  // mudou de ideia); uma disputa ganha é um evento financeiro à parte e
+  // não deve ser apagada por essa regra.
+  if (d.foiDisputa) return Number(d.valorRecuperado ?? 0);
   if (motivos && !motivoGeraPerda(motivos, d.motivoId)) return 0;
   return Number(d.valorRecuperado ?? 0);
 };

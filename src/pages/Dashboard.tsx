@@ -136,8 +136,15 @@ export default function Dashboard() {
     const totalDevolucoes = filtradas.length;
     const totalItens = filtradas.reduce((s, d) => s + quantidadeTotal(d), 0);
     // Apenas devoluções cujo motivo gera perda operacional entram nos
-    // indicadores financeiros (recuperado / perda / em risco).
-    const comPerda = filtradas.filter((d) => motivoGeraPerda(motivos, d.motivoId));
+    // indicadores financeiros (recuperado / perda / em risco) — EXCETO
+    // quando a devolução passou por uma disputa formal (foiDisputa). Uma
+    // disputa ganha ou perdida envolve dinheiro real negociado com a
+    // plataforma, independente de o motivo do item ser "culpa do vendedor".
+    // Sem esse OR, uma disputa ganha em um item com motivo tipo "Não
+    // Serviu" desaparecia da Taxa de Recuperação e do Relatório Integrado.
+    const comPerda = filtradas.filter(
+      (d) => motivoGeraPerda(motivos, d.motivoId) || d.foiDisputa,
+    );
     // NOVO MODELO: trabalhamos com CUSTO REAL da devolução (frete + taxas),
     // não com valor bruto do pedido. valorEfetivo já aplica essa regra.
     const valorPerda = comPerda
@@ -176,6 +183,15 @@ export default function Dashboard() {
     const totalAvaliado = valorPerda + valorRecuperado;
     const taxaRecuperacao = totalAvaliado > 0 ? (valorRecuperado / totalAvaliado) * 100 : 0;
     const semPerda = filtradas.length - comPerda.length;
+
+    // Valor BRUTO devolvido: soma do "Valor total do pedido" informado no
+    // cadastro (valorTotal = soma dos itens), de TODAS as devoluções do
+    // recorte — independente de status ou motivo. É informativo (volume de
+    // mercadoria/faturamento que retornou), NÃO é custo nem perda: o
+    // dinheiro do produto normalmente volta pro comprador, então esse
+    // número não deve ser somado com valorPerda/valorRecuperado.
+    const valorBrutoDevolvido = filtradas.reduce((s, d) => s + valorTotal(d), 0);
+
     return {
       totalDevolucoes,
       totalItens,
@@ -186,6 +202,7 @@ export default function Dashboard() {
       taxaRecuperacao,
       semPerda,
       historicoFixo,
+      valorBrutoDevolvido,
     };
   }, [filtradas, motivos, plataformas, fCompetencia]);
 
@@ -474,12 +491,19 @@ export default function Dashboard() {
         </FilterSelect>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
           label="Devoluções"
           value={stats.totalDevolucoes}
           icon={<Activity className="h-4 w-4" />}
           sub={`${stats.totalItens} itens no total`}
+        />
+        <KpiCard
+          label="Valor bruto devolvido"
+          value={fmtBRL(stats.valorBrutoDevolvido)}
+          tone="default"
+          icon={<Package className="h-4 w-4" />}
+          sub="valor de venda dos pedidos — não é custo"
         />
         <KpiCard
           label="Custo das perdas"
