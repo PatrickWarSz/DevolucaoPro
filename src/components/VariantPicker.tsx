@@ -43,13 +43,21 @@ export function VariantPicker({
   const [popOpen, setPopOpen] = useState(false);
   const [novo, setNovo] = useState("");
 
-  const variantes = selectVariantesDoModelo(
+    const variantes = selectVariantesDoModelo(
     modeloId,
     todasCores,
     todosTamanhos,
     modeloVariantes,
   );
-  const lista = kind === "cor" ? variantes.cores : variantes.tamanhos;
+  const listaBase = kind === "cor" ? variantes.cores : variantes.tamanhos;
+  // Blindagem: o valor já salvo (ex.: puxado de "A Caminho" ou de uma
+  // devolução antiga) pode não estar mais vinculado ao modelo. Sem isso,
+  // o Select do Radix renderiza em branco mesmo com o dado correto no
+  // banco — parece perda de dado pro usuário, mas é só filtro de UI.
+  const lista =
+    value && !listaBase.some((opt) => opt.nome === value)
+      ? [...listaBase, { nome: value }]
+      : listaBase;
 
   const confirmar = () => {
     const trimmed = novo.trim();
