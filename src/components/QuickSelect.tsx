@@ -51,8 +51,20 @@ export function QuickSelect({
   advanceOnSelect = true,
   id,
 }: QuickSelectProps) {
-  const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(false);
   const innerRef = useRef<HTMLButtonElement>(null);
+
+  // Blindagem: se o valor já salvo no registro não existir mais na lista de
+  // opções (catálogo excluído ou desvinculado depois que o registro foi
+  // criado), injeta um item extra só para exibição. Sem isso, o Radix
+  // Select renderiza em branco mesmo com o dado correto salvo no banco —
+  // parece perda de dado pro usuário, mas é só um filtro de UI escondendo
+  // um valor válido. Aplicado aqui na origem para proteger todo mundo que
+  // usa QuickSelect (cores, tamanhos, motivos, peças, etc.), não só um caso.
+  const safeOptions =
+    value && !options.some((opt) => opt.value === value)
+      ? [...options, { value, label: value }]
+      : options;
 
   const setRef = useCallback(
     (node: HTMLButtonElement | null) => {
@@ -118,7 +130,8 @@ export function QuickSelect({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {options.map((opt) => (
+              <SelectContent>
+        {safeOptions.map((opt) => (
           <SelectItem key={opt.value} value={opt.value}>
             {opt.label}
           </SelectItem>
