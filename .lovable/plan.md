@@ -1,74 +1,52 @@
+# IA por baixo dos panos no importador da planilha
 
-# Novas funcionalidades — DevoluçõesPro
+Objetivo: quando você importa a planilha da Shopee, o sistema deve **encaixar nos cadastros que já existem** (cor "PRETO" e não criar "Preta"), acertar o modelo mesmo com palavras que ele não conhece ("legging cirre") e escolher o motivo lendo o comentário do cliente. Nada novo aparece na tela: só as sugestões ficam melhores.
 
-Três frentes que atacam suas duas dores (recuperar dinheiro em disputa + acabar com trabalho manual). Nada é removido, só somado ao que já existe.
+## Como vai funcionar (3 camadas, nessa ordem)
 
-**Checkpoint:** o Lovable salva versão a cada mensagem. Se não gostar depois, é só clicar em "Restaurar" numa mensagem anterior ou usar "Ver histórico". Sem risco de perder o estado atual.
+**1. Normalização contra o catálogo (determinística, instantânea)**
 
----
+Antes de qualquer IA, a cor/tamanho vindos da planilha são "casados" com o que já está cadastrado:
 
-## 1. Importador de planilha Shopee → A Caminho ⭐
+- Ignora acento, caixa e plural/gênero: `Preta`, `preto`, `PRETAS` → **PRETO** (o nome exatamente como está no seu catálogo).
+- Respeita o vínculo do modelo: se o modelo escolhido só tem `PRETO/OFF MESCLA`, a busca acontece primeiro dentro dessas cores.
+- Cor composta de kit (`Preto/Off Mescla`) é quebrada e cada pedaço casa com uma cor do catálogo — vira base para sugerir os 2 itens do kit.
+- Tamanho igual: `gg`, `G.G`, `Extra Grande` → o tamanho cadastrado equivalente.
+- Só quando nada casa é que o texto cru fica lá (como hoje), marcado em amarelo.
 
-Analisei sua planilha (`Order.return_refund...xls`, 49 colunas). Mapeamento:
+**2. Memória de importações e registros anteriores (recorrência)**
 
-| Campo da planilha | Vai virar |
-|---|---|
-| `ID da Devolução` | `devolucaoId` |
-| `ID do pedido` | `pedidoId` |
-| `Nome do Produto` | Modelo (match difuso com catálogo) |
-| `Nome da variação` (ex: "Cinza Mescla,G") | Split em `cor` + `tamanho` |
-| `Motivo da Devolução` + `Observações da Devolução` | Motivo (map) + `notas` |
-| `Preço da unidade` | `valor` (converte "R$53,90" → 53.90) |
-| `Quantidade de Devoluções` | `quantidade` |
-| `Data de criação do pedido` | `createdAt` |
-| Empresa | Sempre a empresa Shopee que você selecionar antes |
+O sistema passa a olhar o histórico antes de sugerir:
 
-**Fluxo (3 telas):**
+- Texto de produto da planilha que você já vinculou a um modelo antes → mesmo modelo, sem perguntar de novo.
+- Combinação motivo-Shopee + comentário parecido → motivo que você escolheu nas vezes anteriores.
+- Frequência conta: se `LEGGING CIRRE` já apareceu 8 vezes ligada a um modelo, isso vence qualquer palpite novo.
 
-1. Botão **"Importar planilha Shopee"** na `/a-caminho`. Seleciona qual empresa+conta Shopee é dona da planilha.
-2. Upload `.xls`/`.xlsx` — parseado no navegador com SheetJS. Nada sai da máquina.
-3. **Tela de revisão** com cada linha classificada:
-   - 🟢 **Pronto** — tudo bateu, modelo/cor/tamanho existem no catálogo.
-   - 🟡 **Precisa revisar** — modelo não encontrado, cor/tamanho novos, ou motivo desconhecido. Você resolve inline (dropdown pra escolher modelo ou "criar novo", igual VariantPicker).
-   - 🔴 **Duplicado** — `pedidoId` já existe em A Caminho ou Devoluções. Pulado automaticamente.
-   - ⚫ **Ignorado** — status na Shopee é "Reembolso completo" ou finalizado (não faz sentido virar "a caminho").
-4. Confirmar → cria os `PedidoACaminho` de uma vez. Log final: X importados, Y ignorados, Z duplicados.
+Essa memória é aprendida sozinha das devoluções e pedidos já salvos, mais um registro leve de "o que você corrigiu na revisão".
 
-**Regra sua respeitada:** nenhuma linha entra automaticamente se tiver divergência. Amarelo bloqueia até você resolver.
+**3. IA (Gemini) só nas linhas duvidosas**
 
-Arquivos: `src/lib/importers/shopee.ts` (parser + normalizador), `src/components/ImportShopeeDialog.tsx` (wizard 3 passos), edit `src/pages/ACaminho.tsx` (botão), `bun add xlsx`.
+Depois das duas camadas acima, as linhas que ficaram sem modelo/motivo (ou com match fraco) vão em **uma única chamada em lote** para uma função de servidor nova. A IA recebe:
 
----
+- as linhas duvidosas (produto, variação, motivo Shopee, comentário do cliente);
+- seu catálogo real (modelos, cores, tamanhos, motivos) — ela **só pode escolher entre esses**;
+- exemplos de vínculos que você já fez antes (a memória da camada 2).
 
-## 2. Central de Disputas (upgrade da `/disputas`)
+Ela devolve, por linha: modeloId, cor, tamanho, motivoId e um nível de confiança. Regras:
 
-Vira o cockpit onde você recupera dinheiro.
+- Confiança alta → a linha já vem preenchida e verde.
+- Confiança média/baixa → vem preenchida, mas **amarela**, exigindo seu OK (sua regra de nunca importar divergência automática continua valendo).
+- IA fora do ar, sem chave, lenta ou resposta inválida → importador segue exatamente como hoje, sem erro na sua frente.
+- Qualquer id inventado pela IA que não exista no catálogo é descartado.
 
-- **Countdown de prazo por plataforma** (Shopee 2d, ML 3d, Shein/TikTok configuráveis em Configurações). Cor: verde → amarelo (24h) → vermelho (vencendo).
-- **Ordenação padrão**: prazo mais curto primeiro.
-- **Checklist de anexos por motivo** (marcadores locais, só pra você não esquecer): defeito pede foto+vídeo+conversa; item errado pede foto do produto+etiqueta; etc.
-- **Gerador de texto de mediação com IA** (Gemini nativo, mesmo padrão da `ai-insights`): botão "Gerar argumento" → devolve texto pronto pra colar na mediação da Shopee/ML. Três tons: formal, firme, conciliador. Botão "Copiar".
+Enquanto isso o botão de importar mostra "Analisando…" por alguns segundos; nenhum painel de IA novo.
 
-Arquivos: edit `src/pages/Disputas.tsx`, novo `src/components/DisputaCard.tsx`, nova edge function `dispute-argument`.
+## Detalhes técnicos
 
----
+- `src/lib/importers/normalize.ts` (novo): normalização pt-BR (acento, plural, gênero), `matchCatalog(texto, opções)` para cor/tamanho/modelo/motivo, split de cor composta de kit.
+- `src/lib/importers/shopee.ts`: `ClassifyContext` ganha `cores`, `tamanhos`, `modeloVariantes` e o índice de histórico; `matchModelo` passa a pesar tokens raros (palavras como "cirre" valem mais que "legging") e exige token distintivo em comum; `matchMotivo` passa a ler também o comentário do cliente; `classifyRows` retorna `confianca` por linha.
+- `src/lib/importers/history.ts` (novo): monta o índice de recorrência a partir de `devolucoes` + `pedidosACaminho`, mais um mapa de correções persistido no store local.
+- `supabase/functions/import-match/index.ts` (nova edge function): mesmo padrão da `ai-insights` (Gemini nativo, `GEMINI_API_KEY_DEVOLUCAO`, JSON estrito), recebe lote + catálogo, responde sugestões por linha. Timeout curto e falha silenciosa.
+- `src/components/ImportShopeeDialog.tsx`: passa o contexto ampliado, chama a função em lote entre o passo de upload e a tela de revisão, aplica sugestões só onde o campo está vazio, e nunca sobrescreve o que você editou à mão.
 
-## 3. Ações em lote no Relatório Integrado
-
-Na tabela do Dashboard:
-
-- Checkbox por linha + "selecionar todos os filtrados".
-- Barra flutuante quando tem seleção: **Mudar status**, **Excluir**, **Exportar CSV das selecionadas**.
-- Botão fixo **Exportar CSV** do recorte inteiro (para contador/controle).
-
-Arquivos: edit `src/pages/Dashboard.tsx`, novo `src/lib/csvExport.ts`.
-
----
-
-## Ordem de execução
-
-1. **Importador Shopee** primeiro (você acabou de mandar a planilha, tá fresco, e é o que mais economiza tempo).
-2. **Central de Disputas** (impacto direto em recuperação).
-3. **Ações em lote** (rápido, fecha a lista).
-
-Se não gostar de algo depois, restaura a versão pela chat. Aprovando, começo pelo importador.
+Nada é removido: telas, semáforo (verde/amarelo/duplicado/ignorado), kits e edição inline continuam iguais.
