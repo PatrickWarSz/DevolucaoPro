@@ -130,7 +130,6 @@ export function QuickSelect({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-              <SelectContent>
         {safeOptions.map((opt) => (
           <SelectItem key={opt.value} value={opt.value}>
             {opt.label}
