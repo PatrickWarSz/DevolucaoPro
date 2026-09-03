@@ -27,9 +27,12 @@ import {
   classifyRows,
   parseShopeeFile,
   revalidateRow,
+  recanonizarLinha,
   type ShopeeImportRow,
   type ShopeeImportItem,
 } from "@/lib/importers/shopee";
+import { buildHistoryIndex, remember } from "@/lib/importers/history";
+import { aplicarSugestoesIA } from "@/lib/importers/aiMatch";
 import { fmtBRL } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -62,6 +65,9 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
   const motivos = useStore((s) => s.motivos);
   const pedidosACaminho = useStore((s) => s.pedidosACaminho);
   const devolucoes = useStore((s) => s.devolucoes);
+  const cores = useStore((s) => s.cores);
+  const tamanhos = useStore((s) => s.tamanhos);
+  const modeloVariantes = useStore((s) => s.modeloVariantes);
   const addPedidoACaminho = useStore((s) => s.addPedidoACaminho);
   const addModelo = useStore((s) => s.addModelo);
   const addMotivo = useStore((s) => s.addMotivo);
@@ -89,6 +95,21 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
     const shopee = plats.find((p) => /shopee/i.test(p.nome));
     return (shopee ?? plats[0])?.id ?? "";
   }, [empresaId, contas, plataformas]);
+
+  /** Contexto completo de classificação (catálogo + vínculos + recorrência). */
+  const ctx = useMemo(
+    () => ({
+      modelos,
+      motivos,
+      pedidosACaminho,
+      devolucoes,
+      cores,
+      tamanhos,
+      modeloVariantes,
+      history: buildHistoryIndex(devolucoes, pedidosACaminho),
+    }),
+    [modelos, motivos, pedidosACaminho, devolucoes, cores, tamanhos, modeloVariantes],
+  );
 
   const contadores = useMemo(() => {
     const c = { ready: 0, review: 0, duplicate: 0, skip: 0 };
@@ -136,13 +157,23 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
     try {
       const raw = await parseShopeeFile(file);
       if (raw.length === 0) throw new Error("A planilha está vazia.");
-      const classified = classifyRows(raw, {
-        modelos,
-        motivos,
-        pedidosACaminho,
-        devolucoes,
-      });
-      setRows(classified);
+      const classified = classifyRows(raw, ctx);
+      // Camada 3 (invisível): IA em lote só nas linhas duvidosas.
+      let final = classified;
+      try {
+        const comIA = await aplicarSugestoesIA({
+          rows: classified,
+          modelos,
+          motivos,
+          cores,
+          tamanhos,
+          history: ctx.history,
+        });
+        final = comIA.map((r) => revalidateRow(recanonizarLinha(r, ctx), ctx));
+      } catch {
+        /* IA é opcional — segue com o resultado determinístico */
+      }
+      setRows(final);
       setStep("review");
     } catch (err) {
       toast({
@@ -162,12 +193,7 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
       prev.map((r) => {
         if (r.key !== key) return r;
         const merged = { ...r, ...patch };
-        return revalidateRow(merged, {
-          modelos,
-          motivos,
-          pedidosACaminho,
-          devolucoes,
-        });
+        return revalidateRow(merged, ctx);
       }),
     );
   };
@@ -183,10 +209,7 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
         const itens = r.itens.map((i) =>
           i.id === itemId ? { ...i, ...patch } : i,
         );
-        return revalidateRow(
-          { ...r, itens },
-          { modelos, motivos, pedidosACaminho, devolucoes },
-        );
+        return revalidateRow(recanonizarLinha({ ...r, itens }, ctx), ctx);
       }),
     );
   };
@@ -204,10 +227,7 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
           quantidade: 1,
           valor: base?.valor ?? 0,
         };
-        return revalidateRow(
-          { ...r, itens: [...r.itens, novo] },
-          { modelos, motivos, pedidosACaminho, devolucoes },
-        );
+        return revalidateRow({ ...r, itens: [...r.itens, novo] }, ctx);
       }),
     );
   };
@@ -217,10 +237,7 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
       prev.map((r) => {
         if (r.key !== rowKey) return r;
         if (r.itens.length <= 1) return r;
-        return revalidateRow(
-          { ...r, itens: r.itens.filter((i) => i.id !== itemId) },
-          { modelos, motivos, pedidosACaminho, devolucoes },
-        );
+        return revalidateRow({ ...r, itens: r.itens.filter((i) => i.id !== itemId) }, ctx);
       }),
     );
   };
@@ -254,6 +271,25 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
         })),
       });
     });
+    // Aprende com o que o usuário confirmou (memória para próximas planilhas).
+    remember({
+      produtos: ready
+        .filter((r) => r.itens[0]?.modeloId)
+        .map((r) => ({ texto: r.produtoTextoOriginal, modeloId: r.itens[0].modeloId })),
+      motivos: ready
+        .filter((r) => r.motivoId)
+        .map((r) => ({
+          texto: `${r.motivoTextoOriginal} ${r.observacoes}`,
+          motivoId: r.motivoId,
+        })),
+      cores: ready.flatMap((r) =>
+        r.itens.filter((i) => i.cor).map((i) => ({ texto: i.cor, nome: i.cor })),
+      ),
+      tamanhos: ready.flatMap((r) =>
+        r.itens.filter((i) => i.tamanho).map((i) => ({ texto: i.tamanho, nome: i.tamanho })),
+      ),
+    });
+
     const reviewSkipped = rows.filter((r) => r.status === "review").length;
     setResumo({
       imported: ready.length,
@@ -335,7 +371,7 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
                   {loading ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                      Lendo…
+                      Analisando…
                     </>
                   ) : (
                     <>
