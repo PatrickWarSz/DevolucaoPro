@@ -474,6 +474,41 @@ export default function ACaminho() {
             </div>
           </div>
 
+          {lista.length > 0 && (
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-muted/30 px-5 py-2">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <Checkbox checked={allVisibleSelected} onCheckedChange={toggleAllVisible} />
+                Selecionar todos ({lista.length})
+              </label>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground tabular">
+                    {selectedIds.length} selecionado(s)
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7"
+                    onClick={() => setSelectedIds([])}
+                  >
+                    Limpar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="h-7"
+                    onClick={() => setConfirmBulk(true)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    Remover selecionados
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {lista.length === 0 ? (
             <div className="p-6">
               <EmptyState
