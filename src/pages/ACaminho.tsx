@@ -262,9 +262,35 @@ export default function ACaminho() {
     return [...arr].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [pedidosACaminho, busca, empresas, plataformas]);
 
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const visibleIds = lista.map((p) => p.id);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
+
+  const toggleOne = (id: string) =>
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const toggleAllVisible = () =>
+    setSelectedIds((prev) =>
+      allVisibleSelected
+        ? prev.filter((id) => !visibleIds.includes(id))
+        : Array.from(new Set([...prev, ...visibleIds])),
+    );
+
+  const removerSelecionados = () => {
+    const n = selectedIds.length;
+    selectedIds.forEach((id) => deletePedidoACaminho(id));
+    setSelectedIds([]);
+    setConfirmBulk(false);
+    toast({ title: `${n} pedido(s) removido(s)` });
+  };
+
   const irParaRegistrar = (p: PedidoACaminho) => {
     navigate(`/registrar?pedido=${encodeURIComponent(p.pedidoId)}`);
   };
+
 
   return (
     <div className="space-y-6">
