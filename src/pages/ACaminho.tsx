@@ -90,6 +90,8 @@ export default function ACaminho() {
   const deletePedidoACaminho = useStore((s) => s.deletePedidoACaminho);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirmBulk, setConfirmBulk] = useState(false);
 
   const [form, setForm] = useState<FormState>(empty());
   const [busca, setBusca] = useState("");
@@ -260,9 +262,35 @@ export default function ACaminho() {
     return [...arr].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [pedidosACaminho, busca, empresas, plataformas]);
 
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const visibleIds = lista.map((p) => p.id);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
+
+  const toggleOne = (id: string) =>
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const toggleAllVisible = () =>
+    setSelectedIds((prev) =>
+      allVisibleSelected
+        ? prev.filter((id) => !visibleIds.includes(id))
+        : Array.from(new Set([...prev, ...visibleIds])),
+    );
+
+  const removerSelecionados = () => {
+    const n = selectedIds.length;
+    selectedIds.forEach((id) => deletePedidoACaminho(id));
+    setSelectedIds([]);
+    setConfirmBulk(false);
+    toast({ title: `${n} pedido(s) removido(s)` });
+  };
+
   const irParaRegistrar = (p: PedidoACaminho) => {
     navigate(`/registrar?pedido=${encodeURIComponent(p.pedidoId)}`);
   };
+
 
   return (
     <div className="space-y-6">
@@ -446,6 +474,41 @@ export default function ACaminho() {
             </div>
           </div>
 
+          {lista.length > 0 && (
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-muted/30 px-5 py-2">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <Checkbox checked={allVisibleSelected} onCheckedChange={toggleAllVisible} />
+                Selecionar todos ({lista.length})
+              </label>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground tabular">
+                    {selectedIds.length} selecionado(s)
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7"
+                    onClick={() => setSelectedIds([])}
+                  >
+                    Limpar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="h-7"
+                    onClick={() => setConfirmBulk(true)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    Remover selecionados
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {lista.length === 0 ? (
             <div className="p-6">
               <EmptyState
@@ -469,8 +532,15 @@ export default function ACaminho() {
                 return (
                   <li
                     key={p.id}
-                    className="group grid grid-cols-[1fr_auto] gap-3 px-5 py-3.5 transition-colors hover:bg-surface-muted/50"
+                    className="group grid grid-cols-[auto_1fr_auto] gap-3 px-5 py-3.5 transition-colors hover:bg-surface-muted/50"
                   >
+                    <div className="pt-1">
+                      <Checkbox
+                        checked={selectedSet.has(p.id)}
+                        onCheckedChange={() => toggleOne(p.id)}
+                        aria-label={`Selecionar ${p.pedidoId}`}
+                      />
+                    </div>
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-sm font-semibold text-foreground">
@@ -545,6 +615,22 @@ export default function ACaminho() {
           )}
         </section>
       </div>
+
+      <AlertDialog open={confirmBulk} onOpenChange={setConfirmBulk}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover {selectedIds.length} pedido(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Os pedidos selecionados serão removidos da lista
+              "a caminho".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={removerSelecionados}>Remover</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
