@@ -532,8 +532,15 @@ export default function ACaminho() {
                 return (
                   <li
                     key={p.id}
-                    className="group grid grid-cols-[1fr_auto] gap-3 px-5 py-3.5 transition-colors hover:bg-surface-muted/50"
+                    className="group grid grid-cols-[auto_1fr_auto] gap-3 px-5 py-3.5 transition-colors hover:bg-surface-muted/50"
                   >
+                    <div className="pt-1">
+                      <Checkbox
+                        checked={selectedSet.has(p.id)}
+                        onCheckedChange={() => toggleOne(p.id)}
+                        aria-label={`Selecionar ${p.pedidoId}`}
+                      />
+                    </div>
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-sm font-semibold text-foreground">
