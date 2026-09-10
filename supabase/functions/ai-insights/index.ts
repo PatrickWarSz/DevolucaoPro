@@ -69,10 +69,11 @@ Deno.serve(async (req) => {
     if (body.totais.totalDevolucoes === 0) {
       return new Response(
         JSON.stringify({
-          resumo: "Ainda não há devoluções no recorte atual para analisar.",
-          alertas: [],
-          oportunidades: [],
-          acoes: [],
+          diagnostico: "Ainda não há devoluções no recorte atual para analisar.",
+          indicadores: [],
+          causas: [],
+          produtos: [],
+          riscos: [],
           resposta: null,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
