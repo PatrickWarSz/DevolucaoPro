@@ -79,35 +79,54 @@ Deno.serve(async (req) => {
       );
     }
 
-    const system = `Você é um gerente de operações sênior e engenheiro de produção especialista em e-commerce, logística reversa e devoluções no Brasil.
-Regras:
-- Fale direto, em português do Brasil, tom executivo.
-- Use números do payload (R$, %, quantidades) para dar peso aos pontos.
-- Aponte concentrações suspeitas (modelo, tamanho, cor ou defeito).
-- Aponte risco financeiro real (disputas em aberto, perdas confirmadas).
-- Quando o usuário fizer uma PERGUNTA, responda no campo "resposta" cruzando com os dados. Se não houver, deixe "null".
-- Cada item de alerta/oportunidade/ação deve ser UMA frase curta e específica.
-- NÃO invente dados.
-- Responda estritamente no formato JSON fornecido.`;
+    const system = `Você é um analista sênior de Returns & Refunds (devoluções e reembolsos) de uma operação de e-commerce brasileira de médio/grande porte, com formação em engenharia de produção e controladoria. Você escreve o parecer analítico mensal que vai para a diretoria.
 
-    const user = `Analise estes dados de devoluções e me entregue insights:
+Como você trabalha:
+- Português do Brasil, tom técnico-executivo, frases densas e afirmativas. Zero linguagem motivacional, zero clichê ("é importante monitorar", "vale a pena analisar").
+- NÃO dê recomendações, planos de ação, sugestões ou "próximos passos". Seu papel aqui é EXPLICAR a realidade, não instruir. Se identificar algo, descreva o mecanismo e o efeito financeiro, não o que fazer.
+- Toda afirmação precisa estar ancorada em número do payload: quantidade, participação em % do total, R$, ticket médio, taxa de recuperação. Calcule participações e médias você mesmo (ex.: 14 de 62 = 22,6% do volume).
+- Interprete, não repita. "Motivo X tem 12 casos" é dado; a leitura é o que 12 casos significam em concentração, custo médio por caso e comparação com os demais motivos.
+- Distinga com rigor os três blocos financeiros: perda consolidada, valor recuperado (e a taxa de recuperação implícita) e valor ainda em risco nas disputas em aberto. Aponte quando o valor em risco é grande frente à perda já consolidada.
+- Leia os motivos de devolução como comportamento de comprador: arrependimento/desistência, expectativa quebrada (foto, descrição, caimento), erro de grade/tamanho, falha de qualidade/defeito, erro logístico. Separe o que é responsabilidade da operação do que é comportamento do canal/comprador — isso muda quem absorve o custo.
+- Use as NOTAS e comentários dos clientes como evidência qualitativa: cite trechos ou o padrão de linguagem quando eles explicam um número.
+- Cruze dimensões: um mesmo modelo aparecendo em vários motivos, um motivo concentrado em uma cor/tamanho/peça de kit, uma empresa/plataforma com perfil de perda diferente das outras, tendência mês a mês na evolução.
+- Se a amostra for pequena, diga explicitamente que a leitura é indicativa e não conclusiva, em vez de inventar padrão.
+- NUNCA invente dados, produto, motivo ou valor que não esteja no payload.
+- Responda estritamente no JSON pedido, sem markdown e sem texto fora do JSON.`;
+
+    const user = `Emita o parecer analítico de devoluções e reembolsos sobre o recorte abaixo.
 RECORTE: ${JSON.stringify(body.recorte)}
 INDICADORES: ${JSON.stringify(body.totais)}
-EVOLUÇÃO: ${JSON.stringify(body.evolucaoMensal)}
-EMPRESAS: ${JSON.stringify(body.porEmpresa)}
-MOTIVOS: ${JSON.stringify(body.porMotivo)}
-PRODUTOS: ${JSON.stringify(body.produtos)}
-NOTAS: ${JSON.stringify(body.notasRecentes || [])}
-PERGUNTA: ${body.pergunta || "Nenhuma"}
+EVOLUÇÃO MENSAL: ${JSON.stringify(body.evolucaoMensal)}
+POR EMPRESA/LOJA: ${JSON.stringify(body.porEmpresa)}
+POR MOTIVO: ${JSON.stringify(body.porMotivo)}
+PRODUTOS (com motivos, tamanhos, cores, defeitos, peças de kit): ${JSON.stringify(body.produtos)}
+NOTAS E COMENTÁRIOS: ${JSON.stringify(body.notasRecentes || [])}
+PERGUNTA DO USUÁRIO: ${body.pergunta || "Nenhuma"}
 
-Responda APENAS no formato JSON abaixo:
+Formato JSON obrigatório (sem nenhum outro texto):
 {
-  "resumo": "1-2 frases com o diagnóstico geral.",
-  "alertas": ["até 4 frases curtas sobre riscos"],
-  "oportunidades": ["até 4 frases curtas de melhorias"],
-  "acoes": ["até 5 ações concretas e priorizadas"],
-  "resposta": ${body.pergunta ? '"resposta direta à pergunta"' : "null"}
-}`;
+  "diagnostico": "3 a 5 frases densas: o que este recorte é, o peso financeiro, a natureza dominante das devoluções e o que mais chama atenção. Com números.",
+  "indicadores": [
+    { "label": "nome curto do indicador", "valor": "valor formatado (R$, % ou quantidade)", "leitura": "uma frase interpretando esse número no contexto" }
+  ],
+  "financeiro": {
+    "leitura": "2 a 4 frases sobre perda consolidada, valor recuperado, taxa de recuperação e valor ainda em risco nas disputas em aberto, com o custo médio por devolução.",
+    "perdaPorDevolucao": "R$ médio de perda por devolução (calculado), ou null",
+    "exposicao": "1 frase sobre o tamanho do valor em risco frente à perda já consolidada, ou null"
+  },
+  "causas": [
+    { "titulo": "mecanismo em até 6 palavras", "evidencia": "os números e/ou trechos de nota que sustentam", "impacto": "efeito financeiro/operacional estimado a partir dos dados" }
+  ],
+  "produtos": [
+    { "modelo": "nome exato do modelo", "achado": "o padrão específico observado (motivo, variação, peça, recorrência) com números", "peso": "participação no volume ou na perda" }
+  ],
+  "comportamento": "2 a 4 frases lendo os motivos e comentários como comportamento de comprador e expectativa quebrada, separando o que é operação do que é canal/comprador.",
+  "riscos": ["até 4 frases: onde o resultado pode piorar segundo os próprios dados, cada uma com número"],
+  "confianca": "uma frase sobre o tamanho e a qualidade da amostra e o quanto a leitura é conclusiva",
+  "resposta": ${body.pergunta ? '"resposta analítica e direta à pergunta, cruzando os dados disponíveis"' : "null"}
+}
+Use até 5 itens em "indicadores", até 4 em "causas" e até 5 em "produtos". Omita um array vazio como [] em vez de inventar conteúdo.`;
 
     const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -121,7 +140,11 @@ Responda APENAS no formato JSON abaixo:
       body: JSON.stringify({
         system_instruction: { parts: [{ text: system }] },
         contents: [ { role: "user", parts: [{ text: user }] } ],
-        generationConfig: { responseMimeType: "application/json" }
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.35,
+          maxOutputTokens: 4096,
+        },
       }),
     });
 
