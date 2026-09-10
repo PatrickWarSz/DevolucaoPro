@@ -1,29 +1,65 @@
 /**
  * AiInsights.tsx
  *
- * Card de insights de IA do Dashboard. Recebe um resumo agregado e fala
- * com a edge function `dev-dashboard-ai` (VEXO → Gemini 2.0 Flash), no
- * papel de "gerente de operações + engenheiro de produção".
- *
- * Mostra: diagnóstico, alertas, oportunidades, próximas ações.
- * Permite também o usuário PERGUNTAR algo específico ("por que tantas
- * devoluções de tamanho M?", "o que esconde nas disputas abertas?", etc.).
+ * Parecer analítico de devoluções e reembolsos no Dashboard. Fala com a edge
+ * function `ai-insights`, que atua como analista sênior de Returns & Refunds:
+ * diagnóstico, indicadores lidos, leitura financeira, causas, produtos
+ * críticos, comportamento do comprador e riscos. Sem sugestões de ação.
  */
 
 import { useState } from "react";
-import { Sparkles, AlertTriangle, TrendingUp, ListChecks, MessageSquare, Loader2, RefreshCw } from "lucide-react";
+import {
+  Sparkles,
+  AlertTriangle,
+  MessageSquare,
+  Loader2,
+  RefreshCw,
+  Wallet,
+  Search,
+  Package,
+  Users,
+  ShieldAlert,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 
+interface IndicadorLido {
+  label?: string;
+  valor?: string;
+  leitura?: string;
+}
+
+interface Causa {
+  titulo?: string;
+  evidencia?: string;
+  impacto?: string;
+}
+
+interface ProdutoCritico {
+  modelo?: string;
+  achado?: string;
+  peso?: string;
+}
+
 interface Insight {
-  resumo?: string;
-  alertas?: string[];
-  oportunidades?: string[];
-  acoes?: string[];
+  diagnostico?: string;
+  indicadores?: IndicadorLido[];
+  financeiro?: {
+    leitura?: string;
+    perdaPorDevolucao?: string | null;
+    exposicao?: string | null;
+  };
+  causas?: Causa[];
+  produtos?: ProdutoCritico[];
+  comportamento?: string;
+  riscos?: string[];
+  confianca?: string;
   resposta?: string | null;
+  /** compatibilidade com respostas antigas */
+  resumo?: string;
 }
 
 export interface AiInsightPayload {
@@ -64,7 +100,6 @@ export interface AiInsightPayload {
   }>;
 }
 
-
 interface Props {
   payload: AiInsightPayload;
 }
@@ -87,7 +122,7 @@ export function AiInsights({ payload }: Props) {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("ai-insights", {
-        body: { ...payload, pergunta: perguntaTexto }, 
+        body: { ...payload, pergunta: perguntaTexto },
       });
       if (error || (data as { error?: string })?.error) {
         // supabase-js descarta o corpo da resposta quando o status não é
@@ -106,7 +141,7 @@ export function AiInsights({ payload }: Props) {
       setUltimaPergunta(perguntaTexto ?? null);
     } catch (e) {
       toast({
-        title: "Não consegui gerar insights",
+        title: "Não consegui gerar a análise",
         description: (e as Error).message,
         variant: "destructive",
       });
@@ -123,6 +158,12 @@ export function AiInsights({ payload }: Props) {
     setPergunta("");
   };
 
+  const diagnostico = insight?.diagnostico ?? insight?.resumo;
+  const indicadores = (insight?.indicadores ?? []).filter((i) => i?.valor || i?.leitura);
+  const causas = (insight?.causas ?? []).filter((c) => c?.titulo || c?.evidencia);
+  const produtos = (insight?.produtos ?? []).filter((p) => p?.modelo);
+  const riscos = (insight?.riscos ?? []).filter(Boolean);
+
   return (
     <section className="rounded-lg border border-primary/20 bg-gradient-to-br from-primary-soft/40 via-card to-card p-4 shadow-xs">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -132,22 +173,17 @@ export function AiInsights({ payload }: Props) {
           </div>
           <div className="min-w-0">
             <h2 className="text-sm font-semibold tracking-tight flex items-center gap-2">
-              Insights de IA
+              Análise de devoluções e reembolsos
               <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-primary">
-                Beta
+                IA
               </span>
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Um gerente de operações analisa seus dados, aponta riscos ocultos e sugere ações.
+              Parecer técnico sobre perdas, recuperação, motivos dos compradores e produtos críticos do recorte.
             </p>
           </div>
         </div>
-        <Button
-          size="sm"
-          onClick={() => rodar()}
-          disabled={loading}
-          className="shrink-0"
-        >
+        <Button size="sm" onClick={() => rodar()} disabled={loading} className="shrink-0">
           {loading ? (
             <>
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -170,8 +206,9 @@ export function AiInsights({ payload }: Props) {
       {!insight && !loading && (
         <div className="mt-4 rounded-md border border-dashed border-border bg-surface-muted/30 p-4 text-center">
           <p className="text-xs text-muted-foreground">
-            Clique em <span className="font-medium text-foreground">Gerar análise</span> para a IA cruzar
-            todos os dados do recorte atual e te entregar diagnóstico, alertas e próximas ações.
+            Clique em <span className="font-medium text-foreground">Gerar análise</span> para receber o parecer
+            completo do recorte atual: leitura financeira, causas por trás das devoluções e produtos que
+            concentram perda.
           </p>
         </div>
       )}
@@ -181,6 +218,7 @@ export function AiInsights({ payload }: Props) {
           <div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
           <div className="h-3 w-5/6 animate-pulse rounded bg-muted" />
           <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
         </div>
       )}
 
@@ -193,34 +231,148 @@ export function AiInsights({ payload }: Props) {
                 Resposta à sua pergunta
               </div>
               <p className="mt-1 text-xs text-muted-foreground italic">"{ultimaPergunta}"</p>
-              <p className="mt-2 text-sm leading-relaxed">{insight.resposta}</p>
+              <p className="mt-2 text-sm leading-relaxed whitespace-pre-line">{insight.resposta}</p>
             </div>
           )}
 
-          {insight.resumo && (
-            <p className="text-sm leading-relaxed text-foreground">{insight.resumo}</p>
+          {diagnostico && (
+            <div className="rounded-md border border-border bg-card p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                <Search className="h-3.5 w-3.5" />
+                Diagnóstico do recorte
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-foreground whitespace-pre-line">{diagnostico}</p>
+            </div>
           )}
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <InsightList
-              icon={<AlertTriangle className="h-3.5 w-3.5" />}
-              title="Alertas"
-              items={insight.alertas}
-              tone="destructive"
-            />
-            <InsightList
-              icon={<TrendingUp className="h-3.5 w-3.5" />}
-              title="Oportunidades"
-              items={insight.oportunidades}
-              tone="success"
-            />
-            <InsightList
-              icon={<ListChecks className="h-3.5 w-3.5" />}
-              title="Próximas ações"
-              items={insight.acoes}
-              tone="primary"
-            />
+          {indicadores.length > 0 && (
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {indicadores.map((ind, i) => (
+                <div key={i} className="rounded-md border border-border bg-card p-3">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    {ind.label}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold tabular leading-none">{ind.valor}</p>
+                  {ind.leitura && (
+                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{ind.leitura}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {insight.financeiro?.leitura && (
+            <div className="rounded-md border border-border bg-card p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-warning">
+                <Wallet className="h-3.5 w-3.5" />
+                Leitura financeira
+              </div>
+              <p className="mt-2 text-sm leading-relaxed whitespace-pre-line">{insight.financeiro.leitura}</p>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {insight.financeiro.perdaPorDevolucao && (
+                  <span className="rounded-md bg-surface-muted/60 px-2 py-1 text-xs tabular">
+                    Perda média por devolução:{" "}
+                    <span className="font-medium text-foreground">{insight.financeiro.perdaPorDevolucao}</span>
+                  </span>
+                )}
+                {insight.financeiro.exposicao && (
+                  <span className="rounded-md bg-surface-muted/60 px-2 py-1 text-xs text-muted-foreground">
+                    {insight.financeiro.exposicao}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {causas.length > 0 && (
+            <div className="rounded-md border border-border bg-card p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-primary">
+                <Search className="h-3.5 w-3.5" />
+                Causas por trás das devoluções
+              </div>
+              <div className="mt-2.5 space-y-3">
+                {causas.map((c, i) => (
+                  <div key={i} className="border-l-2 border-primary/40 pl-3">
+                    <p className="text-sm font-medium leading-snug">{c.titulo}</p>
+                    {c.evidencia && (
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        <span className="font-medium text-foreground/80">Evidência: </span>
+                        {c.evidencia}
+                      </p>
+                    )}
+                    {c.impacto && (
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                        <span className="font-medium text-foreground/80">Impacto: </span>
+                        {c.impacto}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {produtos.length > 0 && (
+            <div className="rounded-md border border-border bg-card p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                <Package className="h-3.5 w-3.5" />
+                Produtos que concentram o problema
+              </div>
+              <div className="mt-2.5 divide-y divide-border/60">
+                {produtos.map((p, i) => (
+                  <div key={i} className="py-2 first:pt-0 last:pb-0">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-sm font-medium leading-snug">{p.modelo}</p>
+                      {p.peso && (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium tabular text-primary">
+                          {p.peso}
+                        </span>
+                      )}
+                    </div>
+                    {p.achado && (
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{p.achado}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {insight.comportamento && (
+              <div className="rounded-md border border-border bg-card p-3.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-info">
+                  <Users className="h-3.5 w-3.5" />
+                  Comportamento do comprador
+                </div>
+                <p className="mt-2 text-xs leading-relaxed whitespace-pre-line">{insight.comportamento}</p>
+              </div>
+            )}
+
+            {riscos.length > 0 && (
+              <div className="rounded-md border border-destructive/30 bg-card p-3.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-destructive">
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                  Onde o resultado pode piorar
+                </div>
+                <ul className="mt-2 space-y-1.5">
+                  {riscos.map((r, i) => (
+                    <li key={i} className="flex gap-2 text-xs leading-relaxed">
+                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-destructive/70" />
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
+
+          {insight.confianca && (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <span className="font-medium">Base da análise: </span>
+              {insight.confianca}
+            </p>
+          )}
         </div>
       )}
 
@@ -229,7 +381,7 @@ export function AiInsights({ payload }: Props) {
         <Input
           value={pergunta}
           onChange={(e) => setPergunta(e.target.value)}
-          placeholder="Pergunte algo à IA. Ex: por que tantas devoluções de tamanho M?"
+          placeholder="Pergunte algo à análise. Ex: por que a perda subiu no mês passado?"
           className="h-8 text-sm"
           disabled={loading}
         />
@@ -238,49 +390,5 @@ export function AiInsights({ payload }: Props) {
         </Button>
       </form>
     </section>
-  );
-}
-
-function InsightList({
-  icon,
-  title,
-  items,
-  tone,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  items?: string[];
-  tone: "destructive" | "success" | "primary";
-}) {
-  const headCls = {
-    destructive: "text-destructive",
-    success: "text-success",
-    primary: "text-primary",
-  }[tone];
-  const dotCls = {
-    destructive: "bg-destructive",
-    success: "bg-success",
-    primary: "bg-primary",
-  }[tone];
-  const list = items ?? [];
-  return (
-    <div className="rounded-md border border-border bg-card p-3">
-      <div className={"flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider " + headCls}>
-        {icon}
-        {title}
-      </div>
-      {list.length === 0 ? (
-        <p className="mt-2 text-xs text-muted-foreground">Nada a destacar.</p>
-      ) : (
-        <ul className="mt-2 space-y-1.5">
-          {list.map((t, i) => (
-            <li key={i} className="flex gap-2 text-xs leading-relaxed">
-              <span className={"mt-1.5 h-1 w-1 shrink-0 rounded-full " + dotCls} />
-              <span>{t}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
