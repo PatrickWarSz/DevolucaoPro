@@ -20,13 +20,15 @@ export interface AiSugestao {
   confianca?: Confianca;
 }
 
-/** Linha precisa de IA? Falta modelo/motivo, ou variação não casou. */
+/** Linha precisa de IA? Falta modelo/motivo, match fraco, ou variação não casou. */
 export function precisaIA(r: ShopeeImportRow): boolean {
   if (r.status === "skip" || r.status === "duplicate") return false;
   if (!r.itens[0]?.modeloId) return true;
   if (!r.motivoId) return true;
+  if (r.confianca !== "alta") return true;
   return r.itens.some((i) => (i.cor && !i.corCasou) || (i.tamanho && !i.tamanhoCasou));
 }
+
 
 interface Args {
   rows: ShopeeImportRow[];

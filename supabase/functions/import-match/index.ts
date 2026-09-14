@@ -76,9 +76,11 @@ REGRAS DURAS:
 - modeloId e motivoId devem ser ids EXATOS do catálogo. Se não tiver certeza razoável, deixe o campo fora.
 - cor e tamanho devem ser strings EXATAS da lista do catálogo (mesma grafia e caixa). Nunca invente variação nova.
 - "Preta"/"pretas" corresponde a "PRETO" se for isso que existe no catálogo. Plural/gênero/acentos são irrelevantes.
-- Palavras raras e técnicas do título ("cirre", "canelada", "flare") pesam MUITO mais que genéricas ("legging", "kit", "feminina").
-- O motivo deve considerar o comentário do cliente, não apenas o motivo declarado na Shopee ("não serviu, ficou apertado" = tamanho; "rasgou na costura" = defeito).
+- O TIPO DE PEÇA é regra absoluta e vem antes de tudo: short/bermuda/ciclista, legging, calça, top/cropped, body, blusa/regata, vestido, saia, conjunto são categorias DIFERENTES. Um "Short Levanta Bumbum Cirrê Academia" JAMAIS pode virar "LEGGING LEVANTA BUMBUM CIRRÊ" — se não existir modelo do mesmo tipo de peça no catálogo, deixe modeloId fora em vez de escolher outro tipo.
+- Depois do tipo de peça, palavras raras e técnicas do título ("cirre", "canelada", "flare", "plus size", "elastico exposto") pesam MUITO mais que genéricas ("levanta bumbum", "academia", "kit", "feminina").
+- O motivo deve ser deduzido do comentário do cliente, mesmo quando ele não usa o termo técnico. Exemplos: "fui experimentar e infelizmente não coube", "ficou apertado", "veio menor" = problema de tamanho / não serviu; "rasgou na costura", "veio manchado" = defeito; "veio outra cor", "não era o que pedi" = produto errado; "desisti", "não gostei" = arrependimento; "nunca recebi" = extravio. Elogios ("muito bonita a cor, o tecido") NÃO são o motivo.
 - confianca: "alta" só quando o produto é inequívoco; "media" quando plausível; "baixa" quando é chute.
+
 
 CATÁLOGO
 modelos: ${JSON.stringify(cat.modelos)}
