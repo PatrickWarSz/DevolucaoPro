@@ -228,12 +228,18 @@ export function matchModeloPesado<T extends { id: string; nome: string }>(
   const total = modelos.length;
   const idf = (t: string) => Math.log((total + 1) / ((df.get(t) ?? 0) + 0.5));
 
+  // tokens do produto que EXISTEM em algum modelo do catálogo (ex.: "cirre").
+  // "academia", "modela" etc. não contam — não são discriminantes do catálogo.
+  const alvoConhecidos = Array.from(alvo).filter((t) => (df.get(t) ?? 0) > 0);
+  const pesoAlvo = alvoConhecidos.reduce((s, t) => s + idf(t), 0);
+
   let best: T | null = null;
   let bestScore = 0;
   for (const { m, ts, cats } of tokensPorModelo) {
     if (ts.length === 0) continue;
     // portão duro: tipo de peça incompatível → nem considera
     if (categoriaConflita(catsProduto, cats)) continue;
+    const setModelo = new Set(ts);
     let hit = 0;
     let all = 0;
     let temDistintivo = false;
@@ -247,7 +253,15 @@ export function matchModeloPesado<T extends { id: string; nome: string }>(
       }
     }
     if (all === 0) continue;
-    let score = (hit / all) * (temDistintivo ? 1 : 0.6);
+    const precisao = hit / all;
+    // cobertura: quanto dos tokens relevantes do produto o modelo explica.
+    // Sem isso, "LEGGING LEVANTA BUMBUM" venceria "LEGGING LEVANTA BUMBUM
+    // CIRRÊ" num produto que diz "cirre".
+    const cobertura =
+      pesoAlvo > 0
+        ? alvoConhecidos.filter((t) => setModelo.has(t)).reduce((s, t) => s + idf(t), 0) / pesoAlvo
+        : 1;
+    let score = (0.55 * precisao + 0.45 * cobertura) * (temDistintivo ? 1 : 0.6);
     // bônus quando o tipo de peça bate explicitamente
     if (catsProduto.size > 0 && cats.size > 0) score = Math.min(1, score * 1.1);
     if (score > bestScore) {
@@ -258,4 +272,5 @@ export function matchModeloPesado<T extends { id: string; nome: string }>(
   // 0.62 é o corte para aceitar sem revisão humana.
   return { match: bestScore >= 0.62 ? best : null, score: bestScore };
 }
+
 
