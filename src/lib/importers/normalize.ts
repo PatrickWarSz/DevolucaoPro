@@ -132,6 +132,41 @@ export function detectarKit(produto: string): number {
   return q >= 2 && q <= 12 ? q : 1;
 }
 
+/**
+ * Categoria da peça (tipo de vestuário). É um "portão duro": um SHORT nunca
+ * pode casar com uma LEGGING, mesmo que todo o resto do nome bata.
+ */
+const CATEGORIAS: Record<string, string[]> = {
+  legging: ["legging", "leging", "legues", "calca legging"],
+  short: ["short", "shorts", "shortinho", "bermuda", "ciclista"],
+  calca: ["calca", "pantalona", "flare"],
+  top: ["top", "cropped", "crop", "sutia", "bojo"],
+  body: ["body", "bodysuit", "macaquinho"],
+  macacao: ["macacao", "jardineira"],
+  blusa: ["blusa", "camiseta", "camisa", "regata", "manga"],
+  vestido: ["vestido"],
+  saia: ["saia"],
+  conjunto: ["conjunto"],
+  meia: ["meia", "meias"],
+};
+
+/** Categorias presentes num texto. */
+export function detectarCategorias(texto: string): Set<string> {
+  const n = ` ${norm(texto)} `;
+  const out = new Set<string>();
+  for (const [cat, aliases] of Object.entries(CATEGORIAS)) {
+    if (aliases.some((a) => n.includes(` ${a} `) || n.includes(` ${a}s `))) out.add(cat);
+  }
+  return out;
+}
+
+/** true quando as categorias existem em ambos e não têm interseção. */
+function categoriaConflita(a: Set<string>, b: Set<string>): boolean {
+  if (a.size === 0 || b.size === 0) return false;
+  for (const c of b) if (a.has(c)) return false;
+  return true;
+}
+
 /** Tokens úteis de um texto (ignora ruído comercial). */
 const STOP = new Set([
   "kit",
@@ -156,6 +191,9 @@ const STOP = new Set([
   "premium",
   "qualidade",
   "original",
+  "academia",
+  "fitness",
+  "treino",
 ]);
 
 export function tokens(texto: string): string[] {
@@ -168,7 +206,8 @@ export function tokens(texto: string): string[] {
 /**
  * Match de modelo com peso IDF: palavra que aparece em poucos modelos do
  * catálogo (ex.: "cirre") vale muito mais que uma genérica ("legging").
- * Exige que ao menos um token distintivo do modelo apareça no produto.
+ * Exige que ao menos um token distintivo do modelo apareça no produto e que
+ * o tipo de peça (short/legging/top...) seja compatível.
  */
 export function matchModeloPesado<T extends { id: string; nome: string }>(
   produto: string,
@@ -177,21 +216,24 @@ export function matchModeloPesado<T extends { id: string; nome: string }>(
   if (!produto || modelos.length === 0) return { match: null, score: 0 };
   const alvo = new Set(tokens(produto));
   if (alvo.size === 0) return { match: null, score: 0 };
+  const catsProduto = detectarCategorias(produto);
 
   // frequência de cada token no catálogo → IDF
   const df = new Map<string, number>();
   const tokensPorModelo = modelos.map((m) => {
     const ts = Array.from(new Set(tokens(m.nome)));
     ts.forEach((t) => df.set(t, (df.get(t) ?? 0) + 1));
-    return { m, ts };
+    return { m, ts, cats: detectarCategorias(m.nome) };
   });
   const total = modelos.length;
   const idf = (t: string) => Math.log((total + 1) / ((df.get(t) ?? 0) + 0.5));
 
   let best: T | null = null;
   let bestScore = 0;
-  for (const { m, ts } of tokensPorModelo) {
+  for (const { m, ts, cats } of tokensPorModelo) {
     if (ts.length === 0) continue;
+    // portão duro: tipo de peça incompatível → nem considera
+    if (categoriaConflita(catsProduto, cats)) continue;
     let hit = 0;
     let all = 0;
     let temDistintivo = false;
@@ -205,7 +247,9 @@ export function matchModeloPesado<T extends { id: string; nome: string }>(
       }
     }
     if (all === 0) continue;
-    const score = (hit / all) * (temDistintivo ? 1 : 0.6);
+    let score = (hit / all) * (temDistintivo ? 1 : 0.6);
+    // bônus quando o tipo de peça bate explicitamente
+    if (catsProduto.size > 0 && cats.size > 0) score = Math.min(1, score * 1.1);
     if (score > bestScore) {
       bestScore = score;
       best = m;
@@ -214,3 +258,4 @@ export function matchModeloPesado<T extends { id: string; nome: string }>(
   // 0.62 é o corte para aceitar sem revisão humana.
   return { match: bestScore >= 0.62 ? best : null, score: bestScore };
 }
+
