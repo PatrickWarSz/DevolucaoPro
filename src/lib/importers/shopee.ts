@@ -203,89 +203,57 @@ function matchMotivo(
   const blob = norm(`${motivoTexto} ${observacoes}`);
   if (!blob) return null;
 
-  type Group = { triggers: string[]; catalogHints: string[] };
+  type Group = { patterns: RegExp[]; catalogHints: string[] };
   const groups: Group[] = [
     {
-      triggers: [
-        "nao serviu",
-        "nao servio",
-        "nao serve",
-        "nao coube",
-        "nao cabe",
-        "nao caiu bem",
-        "nao deu certo no corpo",
-        "ficou pequeno",
-        "ficou grande",
-        "ficou apertad",
-        "ficou folgad",
-        "ficou curt",
-        "apertad",
-        "folgad",
-        "muito pequen",
-        "muito grand",
-        "pequeno demais",
-        "grande demais",
-        "menor do que",
-        "maior do que",
-        "tamanho errado",
-        "tamanho menor",
-        "tamanho maior",
-        "tamanho",
-        "numero errado",
-        "medida",
-        "manequim",
+      // Tamanho / não serviu. Tolera palavras no meio ("não me serviu"),
+      // descrições indiretas ("descrição era gg mas parece um p") e
+      // "modelagem pequena".
+      patterns: [
+        /\bnao\s+(?:\w+\s+){0,3}(?:serviu|servio|serve|servir|coube|cabe|caber|entrou|deu)\b/,
+        /\bnao\s+caiu\s+bem\b/,
+        /\bmodelagem\b/,
+        /\bmanequim\b/,
+        /\bmedida/,
+        /\bapertad|\bfolgad|\bjust[oa] demais|\blargo demais/,
+        /\bficou (?:pequen|grand|curt|apertad|folgad|larg)/,
+        /\b(?:muito|bem) (?:pequen|grand|curt|apertad|folgad)/,
+        /\b(?:pequen\w+|grand\w+|curt\w+) demais\b/,
+        /\bveio (?:menor|maior|pequen|grand|curt|apertad)/,
+        /\b(?:menor|maior) (?:do )?que\b/,
+        /\btamanh/,
+        /\bnumer[oa] errad/,
+        /\bparece (?:um |uma )?(?:pp|p|m|g|gg|ggg)\b/,
+        /\b(?:era|pedi|comprei|escolhi|descricao era) (?:pp|p|m|g|gg|ggg)\b/,
+        /\bveste (?:menor|maior|pequen|grand)/,
       ],
-      catalogHints: ["tamanho", "servi", "medida", "coube", "grade"],
+      catalogHints: ["tamanho", "servi", "medida", "coube", "grade", "modelagem"],
     },
 
     {
-      triggers: [
-        "defeito",
-        "damage",
-        "danificado",
-        "rasgou",
-        "rasgad",
-        "quebrad",
-        "costura",
-        "furad",
-        "mancha",
-        "desfiando",
-        "bolinha",
-        "descosturad",
-        "com problema",
-        "veio ruim",
+      patterns: [
+        /\bdefeito|\bdamage|\bdanificad|\brasg|\bquebrad|\bcostura|\bfurad|\bmanch|\bdesfiando|\bbolinha|\bdescosturad|\bcom problema|\bveio ruim|\bqualidade (?:ruim|baixa|pessima)/,
       ],
       catalogHints: ["defeito", "avaria", "damage", "qualidade"],
     },
     {
-      triggers: [
-        "errado",
-        "wrong item",
-        "outra cor",
-        "cor diferente",
-        "outro tamanho",
-        "diferente do anunciado",
-        "nao era o que pedi",
-        "veio outro",
-        "produto diferente",
-        "faltou",
-        "veio so um",
-        "incompleto",
+      patterns: [
+        /\berrad|\bwrong item|\boutra cor|\bcor diferente|\boutro tamanho|\bdiferente do anunciad|\bnao era o que pedi|\bveio outr|\bproduto diferente|\bfaltou|\bveio so um|\bincomplet/,
       ],
       catalogHints: ["errado", "trocad", "diferente", "incomplet", "falta"],
     },
     {
-      triggers: ["arrependi", "desisti", "nao quero mais", "mudou de ideia", "comprei sem querer", "nao gostei"],
+      patterns: [/\barrependi|\bdesisti|\bnao quero mais|\bmudou de ideia|\bcomprei sem querer|\bnao gostei/],
       catalogHints: ["arrependi", "desist", "nao gostou"],
     },
     {
-      triggers: ["nao chegou", "extraviad", "not received", "nunca recebi", "sumiu"],
+      patterns: [/\bnao chegou|\bextraviad|\bnot received|\bnunca recebi|\bsumiu/],
       catalogHints: ["extravio", "nao chegou", "nao entregue"],
     },
   ];
 
   for (const g of groups) {
-    if (!g.triggers.some((t) => blob.includes(t))) continue;
+    if (!g.patterns.some((p) => p.test(blob))) continue;
     const found = motivos.find((m) => g.catalogHints.some((h) => norm(m.nome).includes(h)));
     if (found) return found;
   }

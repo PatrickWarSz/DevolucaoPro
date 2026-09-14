@@ -160,8 +160,18 @@ export function detectarCategorias(texto: string): Set<string> {
   return out;
 }
 
-/** true quando as categorias existem em ambos e não têm interseção. */
+/** Peças de baixo — mutuamente exclusivas entre si (legging ≠ short ≠ calça...). */
+const PECAS_BAIXO = ["legging", "short", "calca", "saia"];
+
+/** true quando as categorias existem em ambos e são incompatíveis.
+ *  Também vale dentro de conjuntos: "conjunto top + legging" nunca é
+ *  "conjunto top + short". */
 function categoriaConflita(a: Set<string>, b: Set<string>): boolean {
+  const baixoA = PECAS_BAIXO.filter((p) => a.has(p));
+  const baixoB = PECAS_BAIXO.filter((p) => b.has(p));
+  if (baixoA.length > 0 && baixoB.length > 0) {
+    if (!baixoA.some((p) => baixoB.includes(p))) return true;
+  }
   if (a.size === 0 || b.size === 0) return false;
   for (const c of b) if (a.has(c)) return false;
   return true;
