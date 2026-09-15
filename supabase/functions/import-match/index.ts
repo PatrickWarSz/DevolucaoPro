@@ -66,7 +66,8 @@ Deno.serve(async (req) => {
   const cat = body?.catalogo;
   if (linhas.length === 0 || !cat || !Array.isArray(cat.modelos)) return vazio(linhas ?? []);
 
-  const apiKey = Deno.env.get("GEMINI_API_KEY_DEVOLUCAO") || Deno.env.get("GEMINI_API_KEY");
+  // Mesma chave que a IA do dashboard já usa (ai-insights).
+  const apiKey = Deno.env.get("GEMINI_API_KEY_DEVOLUCAO");
   console.log("import-match: linhas", linhas.length, "chave", apiKey ? "ok" : "ausente");
   if (!apiKey) return vazio(linhas);
 
