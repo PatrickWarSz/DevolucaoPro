@@ -68,8 +68,10 @@ Deno.serve(async (req) => {
 
   // Mesma chave que a IA do dashboard já usa (ai-insights).
   const apiKey = Deno.env.get("GEMINI_API_KEY_DEVOLUCAO") || Deno.env.get("GEMINI_API_KEY");
-  console.log("import-match: linhas", linhas.length, "chave", apiKey ? "ok" : "ausente");
-  if (!apiKey) return vazio(linhas);
+  if (!apiKey) {
+    console.error("import-match: chave Gemini ausente");
+    return vazio(linhas);
+  }
 
   const prompt = `Você é o motor de vínculo de um sistema de devoluções de e-commerce brasileiro.
 Para cada linha de uma planilha da Shopee, escolha o vínculo correto USANDO SOMENTE os ids/nomes do catálogo abaixo.
