@@ -147,7 +147,11 @@ export default function Dashboard() {
     );
     // NOVO MODELO: trabalhamos com CUSTO REAL da devolução (frete + taxas),
     // não com valor bruto do pedido. valorEfetivo já aplica essa regra.
-    const valorPerda = comPerda
+    // Perda confirmada é dinheiro que JÁ saiu da carteira: conta sempre que o
+    // operador informou o valor, mesmo que o motivo seja classificado como
+    // "sem culpa do vendedor" (ex.: Não Serviu). Antes o filtro de motivo
+    // apagava essas perdas do indicador.
+    const valorPerda = filtradas
       .filter((d) => d.status === "loss")
       .reduce((s, d) => s + valorEfetivo(d, motivos), 0);
     const valorRecuperado = comPerda
