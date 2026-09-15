@@ -66,7 +66,9 @@ Deno.serve(async (req) => {
   const cat = body?.catalogo;
   if (linhas.length === 0 || !cat || !Array.isArray(cat.modelos)) return vazio(linhas ?? []);
 
+  // Mesma chave que a IA do dashboard já usa (ai-insights).
   const apiKey = Deno.env.get("GEMINI_API_KEY_DEVOLUCAO") || Deno.env.get("GEMINI_API_KEY");
+  console.log("import-match: linhas", linhas.length, "chave", apiKey ? "ok" : "ausente");
   if (!apiKey) return vazio(linhas);
 
   const prompt = `Você é o motor de vínculo de um sistema de devoluções de e-commerce brasileiro.
