@@ -52,7 +52,9 @@ export function AppTopbar() {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    // scope 'local': limpa só a sessão DESTE app — não revoga o token no
+    // servidor, então o Estoque Pro continua logado normalmente.
+    await supabase.auth.signOut({ scope: "local" });
     const hub = (import.meta.env.VITE_AUTH_HUB_URL as string) ?? "https://auth.vexodev.com.br";
     window.location.href = `${hub}?app=devolucoes&redirect=${encodeURIComponent(window.location.origin)}`;
   };
