@@ -32,8 +32,11 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: cookieStorage, // Trocado localStorage por cookieStorage!
-    flowType: 'pkce',      // Alinhado com o fluxo do Estoque!
+    storage: cookieStorage,
+    // Chave própria do DevoluçõesPro: a sessão deste app fica em um cookie
+    // separado do Estoque Pro, então sair de um NÃO desloga o outro.
+    storageKey: 'vexo-devolucoes-auth',
+    flowType: 'pkce',
   },
 });
 
