@@ -87,18 +87,22 @@ export function useSubscription(workspaceId: string | null) {
 
   const refresh = async () => {
     if (!workspaceId) return;
-    const { data } = await supabase
+    // Assinatura do DevoluçõesPro é INDEPENDENTE da do Estoque Pro:
+    // usa colunas próprias (dev_*) na tabela workspaces compartilhada.
+    const { data, error } = await supabase
       .from("workspaces")
-      .select("status_assinatura, data_vencimento, asaas_portal_url, plano_atual")
+      .select("dev_status_assinatura, dev_data_vencimento, dev_plano_atual, asaas_portal_url")
       .eq("id", workspaceId)
       .maybeSingle();
-    if (data) {
+    if (!error && data) {
       setInfo({
-        status: data.status_assinatura as SubscriptionInfo["status"],
-        dataVencimento: data.data_vencimento,
+        status: (data.dev_status_assinatura ?? "trialing") as SubscriptionInfo["status"],
+        dataVencimento: data.dev_data_vencimento,
         asaasPortalUrl: data.asaas_portal_url,
-        planoAtual: data.plano_atual,
+        planoAtual: data.dev_plano_atual,
       });
+    } else {
+      setInfo({ status: "trialing", dataVencimento: null, asaasPortalUrl: null, planoAtual: null });
     }
     setLoading(false);
   };
