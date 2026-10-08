@@ -11,11 +11,17 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 }
 
 // GERENCIADOR DE COOKIES COMPARTILHADO (Igualzinho ao seu programa de Estoque)
+// Chave padrão usada pelo hub de login (auth.vexodev.com.br)
+const HUB_KEY = 'sb-rqqiiwcxuhcsdizohodi-auth-token';
+const readCookie = (key: string) => {
+  const match = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+};
 const cookieStorage = {
   getItem: (key: string) => {
     if (typeof document === 'undefined') return null;
-    const match = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : null;
+    // Sessão própria do DevoluçõesPro; se ainda não existir, herda a do hub de login
+    return readCookie(key) ?? (key === 'vexo-devolucoes-auth' ? readCookie(HUB_KEY) : null);
   },
   setItem: (key: string, value: string) => {
     if (typeof document === 'undefined') return;
