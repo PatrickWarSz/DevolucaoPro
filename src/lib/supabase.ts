@@ -10,27 +10,81 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   );
 }
 
-// GERENCIADOR DE COOKIES COMPARTILHADO (Igualzinho ao seu programa de Estoque)
-// Chave padrão usada pelo hub de login (auth.vexodev.com.br)
+// ─── ARMAZENAMENTO DA SESSÃO ────────────────────────────────────────────────
+// - A sessão PRÓPRIA do DevoluçõesPro fica no localStorage deste domínio
+//   (sem limite de 4KB de cookie) → sair daqui não desloga o Estoque Pro.
+// - Se ainda não houver sessão própria, herda a do hub de login VEXO, que fica
+//   em cookie compartilhado .vexodev.com.br (inteiro ou dividido em pedaços
+//   key.0, key.1… como o Estoque Pro grava).
+const OWN_KEY = 'vexo-devolucoes-auth';
 const HUB_KEY = 'sb-rqqiiwcxuhcsdizohodi-auth-token';
-const readCookie = (key: string) => {
-  const match = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : null;
+// Guarda o refresh_token do hub no momento do "Sair" para não re-herdar a
+// mesma sessão logo após sair. Um novo login no hub gera outro token.
+const LOGOUT_MARK = 'vexo-devolucoes-logout-mark';
+
+const readCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = document.cookie.match(new RegExp('(^| )' + esc + '=([^;]*)'));
+  return match && match[2] ? decodeURIComponent(match[2]) : null;
 };
-const cookieStorage = {
+const readCookieValue = (key: string): string | null => {
+  const single = readCookie(key);
+  if (single) return single;
+  let out = '';
+  for (let i = 0; i < 10; i++) {
+    const part = readCookie(`${key}.${i}`);
+    if (!part) break;
+    out += part;
+  }
+  return out || null;
+};
+const refreshTokenOf = (raw: string | null): string | null => {
+  if (!raw) return null;
+  try {
+    const s = JSON.parse(raw);
+    return s?.refresh_token ?? s?.currentSession?.refresh_token ?? null;
+  } catch {
+    return null;
+  }
+};
+const safeLocal = {
+  get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } },
+  del: (k: string) => { try { localStorage.removeItem(k); } catch { /* ignore */ } },
+};
+
+/** Lê a sessão do hub (cookie compartilhado), respeitando o "Sair" local. */
+function readHubSession(): string | null {
+  const hub = readCookieValue(HUB_KEY);
+  if (!hub) return null;
+  const mark = safeLocal.get(LOGOUT_MARK);
+  if (mark && mark === refreshTokenOf(hub)) return null;
+  return hub;
+}
+
+const sessionStorageAdapter = {
   getItem: (key: string) => {
-    if (typeof document === 'undefined') return null;
-    // Sessão própria do DevoluçõesPro; se ainda não existir, herda a do hub de login
-    return readCookie(key) ?? (key === 'vexo-devolucoes-auth' ? readCookie(HUB_KEY) : null);
+    if (typeof window === 'undefined') return null;
+    const own = safeLocal.get(key);
+    if (own) return own;
+    if (key === OWN_KEY) {
+      // Limpa cookie antigo (versões anteriores gravavam a sessão própria em cookie)
+      const legacy = readCookie(OWN_KEY);
+      if (legacy) {
+        document.cookie = `${OWN_KEY}=; domain=.vexodev.com.br; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      }
+      return readHubSession();
+    }
+    return null;
   },
   setItem: (key: string, value: string) => {
-    if (typeof document === 'undefined') return;
-    document.cookie = `${key}=${encodeURIComponent(value)}; domain=.vexodev.com.br; path=/; max-age=31536000; SameSite=Lax; secure`;
+    safeLocal.set(key, value);
+    if (key === OWN_KEY) safeLocal.del(LOGOUT_MARK);
   },
   removeItem: (key: string) => {
-    if (typeof document === 'undefined') return;
-    document.cookie = `${key}=; domain=.vexodev.com.br; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-  }
+    safeLocal.del(key);
+  },
 };
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -38,13 +92,19 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: cookieStorage,
-    // Chave própria do DevoluçõesPro: a sessão deste app fica em um cookie
-    // separado do Estoque Pro, então sair de um NÃO desloga o outro.
-    storageKey: 'vexo-devolucoes-auth',
+    storage: sessionStorageAdapter,
+    storageKey: OWN_KEY,
     flowType: 'pkce',
   },
 });
+
+/** Sai SOMENTE do DevoluçõesPro (não mexe no Estoque Pro nem no hub). */
+export async function signOutLocal() {
+  const hubToken = refreshTokenOf(readCookieValue(HUB_KEY));
+  await supabase.auth.signOut({ scope: 'local' });
+  safeLocal.del(OWN_KEY);
+  if (hubToken) safeLocal.set(LOGOUT_MARK, hubToken);
+}
 
 // ──────────────────────────────────────────────
 // Seus Helpers de autenticação originais (Mantidos intactos)

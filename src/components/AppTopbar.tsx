@@ -24,7 +24,7 @@ import {
 import { useEffect } from "react";
 import { fmtBRL, statusLabel, valorTotal } from "@/lib/format";
 import { lookup } from "@/lib/store";
-import { supabase } from "@/lib/supabase";
+import { supabase, signOutLocal } from "@/lib/supabase";
 
 export function AppTopbar() {
   const { theme, toggle } = useTheme();
@@ -52,9 +52,8 @@ export function AppTopbar() {
   }, []);
 
   const handleLogout = async () => {
-    // scope 'local': limpa só a sessão DESTE app — não revoga o token no
-    // servidor, então o Estoque Pro continua logado normalmente.
-    await supabase.auth.signOut({ scope: "local" });
+    // Limpa só a sessão DESTE app — o Estoque Pro continua logado normalmente.
+    await signOutLocal();
     const hub = (import.meta.env.VITE_AUTH_HUB_URL as string) ?? "https://auth.vexodev.com.br";
     window.location.href = `${hub}?app=devolucoes&redirect=${encodeURIComponent(window.location.origin)}`;
   };
