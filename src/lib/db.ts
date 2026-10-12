@@ -300,10 +300,11 @@ export async function softDeleteDevolucao(id: string): Promise<void> {
 export async function insertPedidoACaminho(
   wsId: string,
   id: string,
-  p: Omit<PedidoACaminho, "id" | "createdAt">
+  p: Omit<PedidoACaminho, "id" | "createdAt"> & { createdAt?: string }
 ): Promise<void> {
   const { error: errCab } = await supabase.from("dev_pedidos_a_caminho").insert({
     id,
+    ...(p.createdAt ? { criado_em: p.createdAt } : {}),
     workspace_id: wsId,
     empresa_id:   p.empresaId    || null,
     plataforma_id:p.plataformaId || null,

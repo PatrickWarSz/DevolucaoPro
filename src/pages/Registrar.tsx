@@ -236,6 +236,12 @@ export default function Registrar() {
     return pedidosACaminho.find((p) => p.pedidoId.trim().toLowerCase() === idDigitado) ?? null;
   }, [idDigitado, pedidosACaminho]);
 
+  const competenciaDe = (iso?: string) => {
+    if (!iso) return undefined;
+    const d = new Date(iso);
+    if (!Number.isFinite(d.getTime())) return undefined;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
   const aplicarPedido = (p: PedidoACaminho) => {
     const totalPedido = p.itens.reduce((s, it) => s + Number(it.valor || 0), 0);
     // Garante que a empresa+plataforma do pedido a caminho estão vinculadas
@@ -254,6 +260,7 @@ export default function Registrar() {
       plataformaId: p.plataformaId,
       pedidoId: p.pedidoId,
       devolucaoId: p.devolucaoId ?? "",
+      competencia: competenciaDe(p.createdAt) ?? f.competencia,
       motivoId: p.motivoId ?? f.motivoId,
       notas: p.notas ?? f.notas,
       valorPedido: totalPedido,

@@ -33,6 +33,8 @@ interface ShopeeRawRow {
   "ID da Devolução"?: string;
   "ID do pedido"?: string;
   "Data de criação do pedido"?: string;
+  "Tempo de envio de devolução"?: string | number;
+  "Data de solicitação da devolução"?: string | number;
   "Nome do Produto"?: string;
   "Nome da variação"?: string;
   "Preço da unidade"?: string;
@@ -72,6 +74,8 @@ export interface ShopeeImportRow {
   devolucaoId: string;
   pedidoId: string;
   createdAt: string; // ISO
+  /** Data real da devolução (solicitação na Shopee) — define o mês/competência. */
+  dataDevolucao: string; // ISO
   produtoTextoOriginal: string;
   variacaoTextoOriginal: string;
   motivoTextoOriginal: string;
@@ -133,6 +137,26 @@ function parseDate(s: string | number): string {
   const d = new Date(iso);
   if (Number.isFinite(d.getTime())) return d.toISOString();
   return new Date().toISOString();
+}
+
+/** Data real da devolução: coluna de envio/solicitação → data codificada no
+ *  ID da devolução (AAMMDD...) → data do pedido. Horário da Shopee é de Brasília. */
+function dataDaDevolucao(r: ShopeeRawRow, devolucaoId: string, fallback: string): string {
+  const col = r["Tempo de envio de devolução"] || r["Data de solicitação da devolução"];
+  if (col) {
+    if (typeof col === "number") return parseDate(col);
+    const m = String(col).trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+    if (m) return new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4] ?? "12"}:${m[5] ?? "00"}:00-03:00`).toISOString();
+    const br = String(col).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+    if (br) return new Date(`${br[3]}-${br[2]}-${br[1]}T${br[4] ?? "12"}:${br[5] ?? "00"}:00-03:00`).toISOString();
+  }
+  const id = devolucaoId.match(/^(\d{2})(\d{2})(\d{2})/);
+  if (id) {
+    const [, aa, mm, dd] = id;
+    const d = new Date(`20${aa}-${mm}-${dd}T12:00:00-03:00`);
+    if (Number.isFinite(d.getTime()) && +mm >= 1 && +mm <= 12) return d.toISOString();
+  }
+  return fallback;
 }
 
 /** "Cinza Mescla,G" → { cor: "Cinza Mescla", tamanho: "G" } */
@@ -301,6 +325,7 @@ export function classifyRows(
     const obs = String(r["Observações da Devolução"] ?? "").trim();
     const statusShopee = String(r["Status da Devolução / Reembolso"] ?? "").trim();
     const createdAt = parseDate(r["Data de criação do pedido"] ?? "");
+    const dataDevolucao = dataDaDevolucao(r, devolucaoId, createdAt);
 
     // ── modelo: memória primeiro, depois match pesado (IDF) ──
     let origem: ShopeeImportRow["origem"] | undefined;
@@ -395,6 +420,7 @@ export function classifyRows(
       devolucaoId,
       pedidoId,
       createdAt,
+      dataDevolucao,
       produtoTextoOriginal: produto,
       variacaoTextoOriginal: variacao,
       motivoTextoOriginal: motivoTxt,
