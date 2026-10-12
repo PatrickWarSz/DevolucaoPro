@@ -82,7 +82,7 @@ interface Actions {
   ) => void;
 
   // Pedidos a caminho
-  addPedidoACaminho: (p: Omit<PedidoACaminho, "id" | "createdAt">) => PedidoACaminho;
+  addPedidoACaminho: (p: Omit<PedidoACaminho, "id" | "createdAt"> & { createdAt?: string }) => PedidoACaminho;
   updatePedidoACaminho: (id: string, patch: Partial<PedidoACaminho>) => void;
   deletePedidoACaminho: (id: string) => void;
 
@@ -322,7 +322,7 @@ export const useStore = create<State & Actions>()((set, get) => {
       const novo: PedidoACaminho = {
         ...p,
         id,
-        createdAt: new Date().toISOString(),
+        createdAt: p.createdAt || new Date().toISOString(),
         itens: p.itens.map((it) => ({ ...it, id: uid() })),
       };
       set((s) => ({ pedidosACaminho: [novo, ...s.pedidosACaminho] }));

@@ -256,6 +256,7 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
       addPedidoACaminho({
         empresaId,
         plataformaId: plataformaShopeeId,
+        createdAt: r.dataDevolucao || r.createdAt,
         pedidoId: r.pedidoId,
         devolucaoId: r.devolucaoId || undefined,
         motivoId: r.motivoId || undefined,
