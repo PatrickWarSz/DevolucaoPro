@@ -104,6 +104,8 @@ interface Actions {
   deleteModelo: (id: string) => void;
   toggleModeloCor: (modeloId: string, cor: string) => void;
   toggleModeloTamanho: (modeloId: string, tamanho: string) => void;
+  /** Soma (nunca remove) cores/tamanhos do catálogo aos vínculos dos modelos. Retorna nº de novos vínculos. */
+  vincularVariantes: (pares: { modeloId: string; cor?: string; tamanho?: string }[]) => number;
   addCorEVincular: (modeloId: string, nome: string) => void;
   addTamanhoEVincular: (modeloId: string, nome: string) => void;
 
@@ -493,6 +495,32 @@ export const useStore = create<State & Actions>()((set, get) => {
         setTimeout(() => _syncVariantes(modeloId), 0);
       }
     },
+
+    vincularVariantes: (pares) => {
+      const s = get();
+      const norm = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+      const corOf = (n: string) => s.cores.find((c) => norm(c.nome) === norm(n))?.nome;
+      const tamOf = (n: string) => s.tamanhos.find((t) => norm(t.nome) === norm(n))?.nome;
+      const modelosValidos = new Set(s.modelos.map((m) => m.id));
+      const mapa = new Map(s.modeloVariantes.map((mv) => [mv.modeloId, { ...mv, cores: [...mv.cores], tamanhos: [...mv.tamanhos] }]));
+      const alterados = new Set<string>();
+      let total = 0;
+      for (const p of pares) {
+        if (!p.modeloId || !modelosValidos.has(p.modeloId)) continue;
+        let mv = mapa.get(p.modeloId);
+        if (!mv) { mv = { id: uid(), modeloId: p.modeloId, cores: [], tamanhos: [] }; mapa.set(p.modeloId, mv); }
+        const c = p.cor ? corOf(p.cor) : undefined;
+        const t = p.tamanho ? tamOf(p.tamanho) : undefined;
+        if (c && !mv.cores.includes(c)) { mv.cores.push(c); alterados.add(p.modeloId); total++; }
+        if (t && !mv.tamanhos.includes(t)) { mv.tamanhos.push(t); alterados.add(p.modeloId); total++; }
+      }
+      if (alterados.size === 0) return 0;
+      set({ modeloVariantes: Array.from(mapa.values()).filter((mv) => mv.cores.length || mv.tamanhos.length || s.modeloVariantes.some((o) => o.id === mv.id)) });
+      setTimeout(() => alterados.forEach((id) => _syncVariantes(id)), 0);
+      return total;
+    },
+
+
 
     addCorEVincular: (modeloId, nome) => {
       const trimmed = nome.trim();

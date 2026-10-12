@@ -101,19 +101,39 @@ function VariantesPanel() {
   const modeloVariantes = useStore((s) => s.modeloVariantes);
   const toggleModeloCor = useStore((s) => s.toggleModeloCor);
   const toggleModeloTamanho = useStore((s) => s.toggleModeloTamanho);
+  const { toast } = useToast();
+
+  const sincronizarHistorico = () => {
+    const st = useStore.getState();
+    const pares = [
+      ...st.devolucoes.flatMap((d) => d.itens),
+      ...st.pedidosACaminho.flatMap((p) => p.itens),
+    ].map((i) => ({ modeloId: i.modeloId, cor: i.cor, tamanho: i.tamanho }));
+    const n = st.vincularVariantes(pares);
+    toast({
+      title: n ? `${n} vínculo(s) adicionado(s)` : "Nada novo para vincular",
+      description: "Nada que já estava marcado foi removido.",
+    });
+  };
 
   const get = (modeloId: string) =>
     modeloVariantes.find((mv) => mv.modeloId === modeloId);
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-xs">
-      <div className="border-b border-border px-4 py-3">
+      <div className="border-b border-border px-4 py-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
         <h3 className="text-sm font-medium">Variantes por modelo (cores e tamanhos)</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
           Marque as cores e tamanhos que cada modelo realmente tem. No registro
           de devolução, só essas opções aparecem — acelera o cadastro.
           Modelos sem nada marcado mostram <span className="font-medium">tudo</span> (fallback).
+          A importação de planilha marca automaticamente o que identificar.
         </p>
+        </div>
+        <Button size="sm" variant="outline" onClick={sincronizarHistorico}>
+          Vincular pelo histórico
+        </Button>
       </div>
       <div className="divide-y divide-border">
         {modelos.map((m) => {

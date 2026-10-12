@@ -272,6 +272,10 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
         })),
       });
     });
+    // Soma (sem sobrescrever) cores/tamanhos aos vínculos de cada modelo.
+    useStore.getState().vincularVariantes(
+      ready.flatMap((r) => r.itens.map((i) => ({ modeloId: i.modeloId, cor: i.cor, tamanho: i.tamanho }))),
+    );
     // Aprende com o que o usuário confirmou (memória para próximas planilhas).
     remember({
       produtos: ready
