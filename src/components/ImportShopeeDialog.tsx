@@ -116,6 +116,9 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
     rows.forEach((r) => c[r.status]++);
     return c;
   }, [rows]);
+  const [filtro, setFiltro] = useState<ShopeeImportRow["status"] | null>(null);
+  const toggleFiltro = (s: ShopeeImportRow["status"]) => setFiltro((f) => (f === s ? null : s));
+  const rowsVisiveis = filtro ? rows.filter((r) => r.status === filtro) : rows;
 
   const reset = () => {
     setStep("upload");
@@ -392,11 +395,19 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
           {step === "review" && (
             <div className="space-y-3">
               <div className="grid grid-cols-4 gap-2">
-                <Counter icon={CheckCircle2} label="Pronto" value={contadores.ready} tone="success" />
-                <Counter icon={AlertTriangle} label="Revisar" value={contadores.review} tone="warning" />
-                <Counter icon={XCircle} label="Duplicado" value={contadores.duplicate} tone="destructive" />
-                <Counter icon={Ban} label="Ignorado" value={contadores.skip} tone="muted" />
+                <Counter icon={CheckCircle2} label="Pronto" value={contadores.ready} tone="success" active={filtro === "ready"} dimmed={!!filtro && filtro !== "ready"} onClick={() => toggleFiltro("ready")} />
+                <Counter icon={AlertTriangle} label="Revisar" value={contadores.review} tone="warning" active={filtro === "review"} dimmed={!!filtro && filtro !== "review"} onClick={() => toggleFiltro("review")} />
+                <Counter icon={XCircle} label="Duplicado" value={contadores.duplicate} tone="destructive" active={filtro === "duplicate"} dimmed={!!filtro && filtro !== "duplicate"} onClick={() => toggleFiltro("duplicate")} />
+                <Counter icon={Ban} label="Ignorado" value={contadores.skip} tone="muted" active={filtro === "skip"} dimmed={!!filtro && filtro !== "skip"} onClick={() => toggleFiltro("skip")} />
               </div>
+              {filtro && (
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Mostrando {rowsVisiveis.length} de {rows.length} linhas</span>
+                  <button type="button" className="text-primary hover:underline" onClick={() => setFiltro(null)}>
+                    Mostrar todas
+                  </button>
+                </div>
+              )}
 
               <div className="rounded-md border border-border overflow-hidden">
                 <div className="max-h-[52vh] overflow-y-auto">
@@ -411,7 +422,10 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {rows.map((r) => (
+                      {rowsVisiveis.length === 0 && (
+                        <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">Nenhuma linha neste filtro.</td></tr>
+                      )}
+                      {rowsVisiveis.map((r) => (
                         <RowLine
                           key={r.key}
                           row={r}
@@ -500,26 +514,43 @@ function Counter({
   label,
   value,
   tone,
+  active,
+  dimmed,
+  onClick,
 }: {
   icon: typeof CheckCircle2;
   label: string;
   value: number;
   tone: "success" | "warning" | "destructive" | "muted";
+  active?: boolean;
+  dimmed?: boolean;
+  onClick?: () => void;
 }) {
   const tones = {
-    success: "bg-success-soft text-success-soft-foreground border-success/20",
-    warning: "bg-warning-soft text-warning-soft-foreground border-warning/20",
-    destructive: "bg-destructive-soft text-destructive-soft-foreground border-destructive/20",
-    muted: "bg-surface-muted text-muted-foreground border-border",
+    success: "bg-success-soft text-success-soft-foreground border-success/20 ring-success",
+    warning: "bg-warning-soft text-warning-soft-foreground border-warning/20 ring-warning",
+    destructive: "bg-destructive-soft text-destructive-soft-foreground border-destructive/20 ring-destructive",
+    muted: "bg-surface-muted text-muted-foreground border-border ring-border",
   };
   return (
-    <div className={cn("rounded-md border px-3 py-2 flex items-center gap-2", tones[tone])}>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      title={active ? "Mostrar todas" : `Mostrar só ${label.toLowerCase()}`}
+      className={cn(
+        "rounded-md border px-3 py-2 flex items-center gap-2 text-left transition-all hover:brightness-95",
+        tones[tone],
+        active && "ring-2 ring-offset-1",
+        dimmed && "opacity-50",
+      )}
+    >
       <Icon className="h-4 w-4 shrink-0" />
       <div className="min-w-0">
         <div className="text-[10px] uppercase tracking-wider font-medium">{label}</div>
         <div className="text-lg font-semibold leading-none tabular">{value}</div>
       </div>
-    </div>
+    </button>
   );
 }
 
