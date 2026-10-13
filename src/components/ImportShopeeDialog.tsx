@@ -116,6 +116,9 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
     rows.forEach((r) => c[r.status]++);
     return c;
   }, [rows]);
+  const [filtro, setFiltro] = useState<ShopeeImportRow["status"] | null>(null);
+  const toggleFiltro = (s: ShopeeImportRow["status"]) => setFiltro((f) => (f === s ? null : s));
+  const rowsVisiveis = filtro ? rows.filter((r) => r.status === filtro) : rows;
 
   const reset = () => {
     setStep("upload");
@@ -392,10 +395,20 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
           {step === "review" && (
             <div className="space-y-3">
               <div className="grid grid-cols-4 gap-2">
-                <Counter icon={CheckCircle2} label="Pronto" value={contadores.ready} tone="success" />
-                <Counter icon={AlertTriangle} label="Revisar" value={contadores.review} tone="warning" />
-                <Counter icon={XCircle} label="Duplicado" value={contadores.duplicate} tone="destructive" />
-                <Counter icon={Ban} label="Ignorado" value={contadores.skip} tone="muted" />
+                <Counter icon={CheckCircle2} label="Pronto" value={contadores.ready} tone="success" active={filtro === "ready"} dimmed={!!filtro && filtro !== "ready"} onClick={() => toggleFiltro("ready")} />
+                <Counter icon={AlertTriangle} label="Revisar" value={contadores.review} tone="warning" active={filtro === "review"} dimmed={!!filtro && filtro !== "review"} onClick={() => toggleFiltro("review")} />
+                <Counter icon={XCircle} label="Duplicado" value={contadores.duplicate} tone="destructive" active={filtro === "duplicate"} dimmed={!!filtro && filtro !== "duplicate"} onClick={() => toggleFiltro("duplicate")} />
+                <Counter icon={Ban} label="Ignorado" value={contadores.skip} tone="muted" active={filtro === "skip"} dimmed={!!filtro && filtro !== "skip"} onClick={() => toggleFiltro("skip")} />
+              </div>
+              {filtro && (
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Mostrando {rowsVisiveis.length} de {rows.length} linhas</span>
+                  <button type="button" className="text-primary hover:underline" onClick={() => setFiltro(null)}>
+                    Mostrar todas
+                  </button>
+                </div>
+              )}
+              <div className="hidden">
               </div>
 
               <div className="rounded-md border border-border overflow-hidden">
@@ -411,7 +424,10 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {rows.map((r) => (
+                      {rowsVisiveis.length === 0 && (
+                        <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">Nenhuma linha neste filtro.</td></tr>
+                      )}
+                      {rowsVisiveis.map((r) => (
                         <RowLine
                           key={r.key}
                           row={r}
