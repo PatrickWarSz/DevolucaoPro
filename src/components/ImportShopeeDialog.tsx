@@ -408,8 +408,6 @@ export function ImportShopeeDialog({ open, onOpenChange }: Props) {
                   </button>
                 </div>
               )}
-              <div className="hidden">
-              </div>
 
               <div className="rounded-md border border-border overflow-hidden">
                 <div className="max-h-[52vh] overflow-y-auto">
