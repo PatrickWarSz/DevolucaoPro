@@ -199,6 +199,9 @@ export default function Registrar() {
   if (!form.plataformaId) camposFaltando.push("Plataforma");
   if (!form.motivoId) camposFaltando.push("Motivo");
   if (pedidoFaltando) camposFaltando.push("ID do Pedido (obrigatório em disputa/perda/aguardando)");
+  if (exigeTipoDefeito && !form.tipoDefeitoId) {
+    camposFaltando.push("Tipo de defeito constatado (obrigatório neste motivo)");
+  }
   if (form.itens.length === 0 || itensValidos.length !== form.itens.length) {
     camposFaltando.push("Modelo e quantidade em todos os itens");
   }
