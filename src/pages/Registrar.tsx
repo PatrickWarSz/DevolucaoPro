@@ -671,7 +671,8 @@ export default function Registrar() {
             {exigeTipoDefeito && (
               <Field
                 label="Tipo de defeito constatado"
-                hint="opcional · ajuda nas análises"
+                required
+                hint="obrigatório neste motivo"
               >
                 <QuickSelect
                   triggerRef={tipoDefeitoRef}
